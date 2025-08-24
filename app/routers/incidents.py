@@ -3,6 +3,7 @@ from typing import List
 
 from fastapi import APIRouter, HTTPException
 
+from app.core.config import settings
 from app.services import crossfire_api
 
 router = APIRouter(prefix="/incidents")
@@ -17,9 +18,18 @@ async def get_incident_hotspots():
       List[Incident]: List of incident hotspots.
     """
     try:
-        data = await crossfire_api.fetch_incidents()
-        print(data)
-        # return data
+        email = settings.EMAIL_CROSSFIRE_API
+        password = settings.PASSWORD_CROSSFIRE_API
+        access_token = crossfire_api.get_auth_token(email, password)
+
+        if access_token == "":
+            raise HTTPException(
+                status_code=401,
+                detail="Não foi possível obter o token de autenticação.",
+            )
+
+        # print(data)
+    # return data
 
     except httpx.HTTPStatusError as exc:
         # Se o erro foi um status HTTP (ex: 404 Not Found),
