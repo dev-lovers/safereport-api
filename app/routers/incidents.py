@@ -1,7 +1,7 @@
 import httpx
-from typing import List
+from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response, Cookie
 
 from app.core.config import settings
 from app.services import crossfire_api
@@ -9,8 +9,11 @@ from app.services import crossfire_api
 router = APIRouter(prefix="/incidents")
 
 
-@router.get("/hotspots")
-async def get_incident_hotspots():
+@router.post("/hotspots")
+async def get_incident_hotspots(
+    response: Response,
+    access_token: Optional[str] = Cookie(None),
+):
     """
     Get and analyze incident hotspots based on data from one or more APIs.
 
@@ -18,24 +21,31 @@ async def get_incident_hotspots():
       List[Incident]: List of incident hotspots.
     """
     try:
-        email = settings.EMAIL_CROSSFIRE_API
-        password = settings.PASSWORD_CROSSFIRE_API
-        access_token = crossfire_api.get_auth_token(email, password)
+        if access_token is None:
+            email = settings.EMAIL_CROSSFIRE_API
+            password = settings.PASSWORD_CROSSFIRE_API
+            access_token = crossfire_api.get_auth_token(email, password)
 
-        if access_token == "":
-            raise HTTPException(
-                status_code=401,
-                detail="Não foi possível obter o token de autenticação.",
+            if access_token == "":
+                raise HTTPException(
+                    status_code=401,
+                    detail="Não foi possível obter o token de autenticação.",
+                )
+
+            response.set_cookie(
+                key="access_token",
+                value=access_token,
+                httponly=True,
+                secure=True,
+                samesite="strict",
+                max_age=60 * 60 * 24,
             )
-
-        # print(data)
-    # return data
 
     except httpx.HTTPStatusError as exc:
         # Se o erro foi um status HTTP (ex: 404 Not Found),
         raise HTTPException(
             status_code=exc.response.status_code,
-            detail=f"Erro na API do CrossFire",
+            detail=f"Erro na API do CrossFire. {exc.response.text}",
         )
     except httpx.RequestError:
         # Se o erro foi de conexão, retornamos um erro 503 Service Unavailable.

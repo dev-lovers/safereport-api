@@ -1,6 +1,6 @@
 import httpx
 
-CROSSFIRE_API_URL = ""
+CROSSFIRE_API_BASE_URL = "https://api-service.fogocruzado.org.br/api/v2"
 AUTH_API_URL = "https://api-service.fogocruzado.org.br/api/v2/auth/login"
 
 
