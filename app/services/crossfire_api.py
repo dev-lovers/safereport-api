@@ -8,7 +8,7 @@ AUTH_API_URL = "https://api-service.fogocruzado.org.br/api/v2/auth/login"
 
 async def make_request(url: str):
     """
-    Get incidents that occurred in the crossfire API
+    Get occurrences that occurred in the crossfire API
 
     Raises:
         httpx.HTTPStatusError: Se a API externa retornar um erro (4xx, 5xx).

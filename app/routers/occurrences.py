@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Response, Cookie
 from app.core.config import settings
 from app.services import crossfire_api
 
-router = APIRouter(prefix="/incidents")
+router = APIRouter(prefix="/occurrences")
 
 from pydantic import BaseModel
 
@@ -20,16 +20,16 @@ class LocationSchema(BaseModel):
 
 
 @router.post("/hotspots")
-async def get_incident_hotspots(
+async def get_occurrence_hotspots(
     location: LocationSchema,
     response: Response,
     access_token: Optional[str] = Cookie(None),
 ):
     """
-    Get and analyze incident hotspots based on data from one or more APIs.
+    Get and analyze occurrence hotspots based on data from one or more APIs.
 
     Returns:
-      List[Incident]: List of incident hotspots.
+      List[Occurrence]: List of Occurrence hotspots.
     """
     try:
         if access_token is None:
@@ -89,4 +89,4 @@ async def get_incident_hotspots(
             detail="Não foi possível conectar à API do CrossFire no momento.",
         )
 
-    return {"message": "List of incident hotspots"}
+    return {"message": "List of occurrence hotspots"}

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
 
 
-class Incident(BaseModel):
+class Occurrence(BaseModel):
     pass
