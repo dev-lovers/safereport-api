@@ -1,6 +1,10 @@
 from typing import Optional
 
 import httpx
+from fastapi import HTTPException
+
+from app.schemas.location import LocationSchema
+
 
 CROSSFIRE_API_BASE_URL = "https://api-service.fogocruzado.org.br/api/v2"
 AUTH_API_URL = "https://api-service.fogocruzado.org.br/api/v2/auth/login"
@@ -121,6 +125,22 @@ def get_city_id(city: str, access_token: str) -> Optional[str]:
         return None
 
 
+def get_location_ids(location: LocationSchema, token: str):
+    state_id = get_state_id(location.state, token)
+    if not state_id:
+        raise HTTPException(
+            status_code=404, detail=f"Estado '{location.state}' não encontrado."
+        )
+
+    city_id = get_city_id(location.city, token)
+    if not city_id:
+        raise HTTPException(
+            status_code=404, detail=f"Cidade '{location.city}' não encontrada."
+        )
+
+    return state_id, city_id
+
+
 def get_occurrences(state_id: str, city_id: str, access_token: str) -> Optional[str]:
     # TODO: Ajustar docstring
     """
@@ -135,11 +155,10 @@ def get_occurrences(state_id: str, city_id: str, access_token: str) -> Optional[
         "Content-Type": "application/json",
     }
 
-    # order=ASC&page=1&take=20&idState=813ca36b-91e3-4a18-b408-60b27a1942ef&idCities=d79d2347-bd0d-40aa-8dcc-04134cffd988&idCities=e37f7ad7-cd64-4279-946a-8d689b9b934b
     params = {
         "order": "ASC",
         "page": 1,
-        "take": 1,
+        "take": 20,
         "idState": state_id,
         "idCities": city_id,
     }
