@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 import httpx
 from fastapi import HTTPException
@@ -8,24 +8,6 @@ from app.schemas.location import LocationSchema
 
 CROSSFIRE_API_BASE_URL = "https://api-service.fogocruzado.org.br/api/v2"
 AUTH_API_URL = "https://api-service.fogocruzado.org.br/api/v2/auth/login"
-
-
-async def make_request(url: str):
-    """
-    Get occurrences that occurred in the crossfire API
-
-    Raises:
-        httpx.HTTPStatusError: Se a API externa retornar um erro (4xx, 5xx).
-        httpx.RequestError: Se houver um problema de conexão com a API.
-    """
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            url,
-            timeout=10.0,
-        )
-
-        response.raise_for_status()
-        return response.json()
 
 
 def get_auth_token(email, password):
@@ -47,7 +29,7 @@ def get_auth_token(email, password):
 
         response.raise_for_status()
         response_data = response.json()
-        print(response_data)
+
         data_payload = response_data.get("data", {})
         access_token = data_payload.get("accessToken", "")
 
@@ -141,44 +123,47 @@ def get_location_ids(location: LocationSchema, token: str):
     return state_id, city_id
 
 
-def get_occurrences(state_id: str, city_id: str, access_token: str) -> Optional[str]:
-    # TODO: Ajustar docstring
+def get_occurrences(
+    state_id: str, city_id: str, access_token: str
+) -> Optional[List[dict]]:
     """
-    Get auth token from the auth API
+    Busca todas as ocorrências paginadas da API externa.
 
-    Raises:
-        httpx.HTTPStatusError: Se a API externa retornar um erro (4xx, 5xx).
-        httpx.RequestError: Se houver um problema de conexão com a API.
+    Args:
+        state_id (str): ID do estado.
+        city_id (str): ID da cidade.
+        access_token (str): Token de autenticação.
+
+    Returns:
+        list[dict] | None: Lista com todas as ocorrências, ou None se houver erro.
     """
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json",
     }
 
-    params = {
-        "order": "ASC",
-        "page": 1,
-        "take": 20,
-        "idState": state_id,
-        "idCities": city_id,
-    }
-
     with httpx.Client() as client:
+        params = {
+            "order": "ASC",
+            "initialdate": "2025-07-04",
+            "finaldate": "2025-08-04",
+            "idState": state_id,
+            "idCities": city_id,
+        }
+
         response = client.get(
             f"{CROSSFIRE_API_BASE_URL}/occurrences",
             headers=headers,
             params=params,
             timeout=10.0,
         )
-
         response.raise_for_status()
         response_data = response.json()
 
         response_code = response_data.get("code")
-
-        # TODO: Verificar se eu devo retornar None ou uma lista vazia
         if response_code != 200:
             return None
 
-        data_payload = response_data.get("data", [])
-        return data_payload
+        occurrences = response_data.get("data", [])
+
+    return occurrences

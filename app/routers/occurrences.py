@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.services import crossfire_api
 from app.services import hotspot_service
 from app.schemas.location import LocationSchema
+from collections import Counter
 
 router = APIRouter(prefix="/occurrences")
 
@@ -24,7 +25,7 @@ async def get_occurrence_hotspots(
       List[Occurrence]: List of Occurrence hotspots.
     """
     try:
-        if access_token is None:
+        if True:
             email = settings.EMAIL_CROSSFIRE_API
             password = settings.PASSWORD_CROSSFIRE_API
 
@@ -63,7 +64,10 @@ async def get_occurrence_hotspots(
         ]
 
         analyzed_data = hotspot_service.analyze_occurrences(occurrences_formatted)
-        print(analyzed_data)
+
+        cluster_counts = Counter(occ["cluster"] for occ in analyzed_data)
+        cluster_counts = dict(cluster_counts)
+        print("Cluster counts:", cluster_counts)
 
     except httpx.HTTPStatusError as exc:
         # Se o erro foi um status HTTP (ex: 404 Not Found),

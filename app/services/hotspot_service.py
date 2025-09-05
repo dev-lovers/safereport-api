@@ -25,7 +25,6 @@ def analyze_occurrences(occurrences: List[Dict]) -> List[Dict]:
 
     df = pd.DataFrame(occurrences)
 
-    # Garante que as colunas de coordenadas sejam numéricas
     df["latitude"] = pd.to_numeric(df["latitude"])
     df["longitude"] = pd.to_numeric(df["longitude"])
 
