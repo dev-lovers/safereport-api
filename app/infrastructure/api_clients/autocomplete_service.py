@@ -32,8 +32,6 @@ class AutocompleteService:
                 response.raise_for_status()
                 response_data = response.json()
 
-                print(response_data)
-
                 suggestions = response_data.get("places", [])
                 return suggestions
 
