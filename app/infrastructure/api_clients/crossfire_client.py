@@ -27,11 +27,11 @@ class CrossfireAPIService(OccurrenceGateway):
     def _get_state_id(self, state: str) -> Optional[str]:
         """
         Busca o ID do estado a partir do nome. Método auxiliar interno.
-        
+
         Args:
-					state (str): Nome do estado (ex: "São Paulo").
+                                        state (str): Nome do estado (ex: "São Paulo").
         Returns:
-					Optional[str]: ID do estado se encontrado, caso contrário None.
+                                        Optional[str]: ID do estado se encontrado, caso contrário None.
         """
         with httpx.Client() as client:
             response = client.get(
@@ -54,11 +54,11 @@ class CrossfireAPIService(OccurrenceGateway):
     def _get_city_id(self, city: str) -> Optional[str]:
         """
         Busca o ID da cidade a partir do nome. Método auxiliar interno.
-        
+
         Args:
-					city (str): Nome da cidade (ex: "São Paulo").
+                                        city (str): Nome da cidade (ex: "São Paulo").
         Returns:
-					Optional[str]: ID da cidade se encontrado, caso contrário None.	
+                                        Optional[str]: ID da cidade se encontrado, caso contrário None.
         """
         city = city.upper()
 
@@ -117,17 +117,4 @@ class CrossfireAPIService(OccurrenceGateway):
                 raise HTTPException("Ocorrências não encontradas para a localização.")
 
             occurrences_raw = response_data.get("data", [])
-            occurrences = [
-                OccurrenceFiltered(
-                    id=item.get("id"),
-                    title=item.get("contextInfo", {})
-                    .get("mainReason", {})
-                    .get("name", ""),
-                    latitude=item.get("latitude", 0.0),
-                    longitude=item.get("longitude", 0.0),
-                    description=item.get("contextInfo", {}).get("details", ""),
-                    created_at=item.get("createdAt", ""),
-                )
-                for item in occurrences_raw
-            ]
-            return occurrences
+            return occurrences_raw
