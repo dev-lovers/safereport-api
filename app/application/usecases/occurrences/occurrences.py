@@ -1,7 +1,7 @@
 from app.domain.repositories import OccurrenceGateway
 from app.domain.entities import Occurrence
 from app.infrastructure.api_clients.crossfire_auth_service import CrossfireAuthService
-from app.domain.analysis_service import IHotspotAnalysisService
+from app.domain.services import IHotspotAnalysisService
 
 
 class GetOccurrencesUseCase:

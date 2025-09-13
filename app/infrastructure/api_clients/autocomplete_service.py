@@ -9,7 +9,10 @@ class AutocompleteService:
     def get_suggestions(self, query: str) -> list[str]:
         """
         Obtém sugestões de autocomplete da API.
-
+        
+        Args:
+					query (str): O texto de consulta para o qual obter sugestões.
+        
         Raises:
           httpx.HTTPStatusError: Se a API externa retornar um erro (4xx, 5xx).
           httpx.RequestError: Se houver um problema de conexão com a API.

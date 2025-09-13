@@ -28,25 +28,20 @@ class GetOccurrenceHotspotsUseCase:
         Executa a lógica completa de autenticação, busca e análise.
         """
         try:
-            # 1. Autenticação e obtenção do token
             access_token = self.auth_service.get_auth_token(email, password)
 
             if not access_token:
                 raise ValueError("Não foi possível obter o token de autenticação.")
 
-            # 2. Configura o gateway de ocorrências com o token
             self.occurrence_gateway.set_access_token(access_token)
 
-            # 3. Usa o gateway para buscar as ocorrências
             occurrences = self.occurrence_gateway.get_occurrences(
                 city_name=city_name, state_name=state_name
             )
 
-            # 4. Usa o serviço de análise para processar os dados
             analyzed_data = self.analysis_service.analyze_occurrences(occurrences)
 
             return analyzed_data
 
         except Exception as e:
-            # Lança a exceção para que a camada de interface a capture
             raise e

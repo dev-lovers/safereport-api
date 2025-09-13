@@ -19,17 +19,14 @@ from app.application.usecases.occurrences.get_occurrence_hotspots import (
 router = APIRouter(prefix="/occurrences", tags=["occurrences"])
 
 
-# Dependência para o serviço de autenticação
 def get_auth_service() -> CrossfireAuthService:
     return CrossfireAuthService()
 
 
-# Dependência para o serviço da API, que será configurado com o token
 def get_occurrence_gateway() -> CrossfireAPIService:
     return CrossfireAPIService()
 
 
-# Dependência para o serviço de análise
 def get_analysis_service() -> SklearnIHotspotAnalysisService:
     return SklearnIHotspotAnalysisService()
 
@@ -60,8 +57,6 @@ async def get_occurrence_hotspots(
             state_name=location.state_name,
         )
 
-        # A lógica de cookies e a contagem de clusters ficam aqui,
-        # pois são detalhes da camada de interface.
         cluster_counts = Counter(occ["cluster"] for occ in analyzed_data)
         print("Cluster counts:", dict(cluster_counts))
 

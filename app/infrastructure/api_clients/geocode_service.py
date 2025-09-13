@@ -8,6 +8,16 @@ GEOCODE_API_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 
 class GeocodeService:
     def geocode(self, address: str):
+        """
+        Obtém as coordenadas (latitude e longitude) para um endereço fornecido.
+        
+        Args:
+					address (str): O endereço a ser geocodificado.
+        Raises:
+					httpx.HTTPStatusError: Se a API externa retornar um erro (4xx, 5xx).
+					httpx.RequestError: Se houver um problema de conexão com a API.
+					HTTPException: Se o endereço não puder ser decodificado.
+				"""
         try:
             with httpx.Client() as client:
                 response = client.get(

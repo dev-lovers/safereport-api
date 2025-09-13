@@ -9,9 +9,6 @@ CROSSFIRE_API_BASE_URL = "https://api-service.fogocruzado.org.br/api/v2"
 
 
 class CrossfireAPIService(OccurrenceGateway):
-    """
-    Implementação concreta da OccurrenceGateway usando a API Crossfire.
-    """
 
     def __init__(self):
         self._access_token: list[str] = None
@@ -28,6 +25,14 @@ class CrossfireAPIService(OccurrenceGateway):
         }
 
     def _get_state_id(self, state: str) -> Optional[str]:
+        """
+        Busca o ID do estado a partir do nome. Método auxiliar interno.
+        
+        Args:
+					state (str): Nome do estado (ex: "São Paulo").
+        Returns:
+					Optional[str]: ID do estado se encontrado, caso contrário None.
+        """
         with httpx.Client() as client:
             response = client.get(
                 f"{CROSSFIRE_API_BASE_URL}/states",
@@ -49,6 +54,11 @@ class CrossfireAPIService(OccurrenceGateway):
     def _get_city_id(self, city: str) -> Optional[str]:
         """
         Busca o ID da cidade a partir do nome. Método auxiliar interno.
+        
+        Args:
+					city (str): Nome da cidade (ex: "São Paulo").
+        Returns:
+					Optional[str]: ID da cidade se encontrado, caso contrário None.	
         """
         city = city.upper()
 

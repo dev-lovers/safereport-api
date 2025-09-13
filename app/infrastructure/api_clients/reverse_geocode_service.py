@@ -8,6 +8,15 @@ REVERSE_GEOCODE_API_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 
 class ReverseGeocodeService:
     def reverse_geocode(self, latitude: float, longitude: float):
+        """
+        Obtém o endereço formatado a partir das coordenadas de latitude e longitude.
+        Args:
+						latitude (float): Latitude do local.
+						longitude (float): Longitude do local.
+        Raises:
+						httpx.HTTPStatusError: Se a API externa retornar um erro (4xx, 5xx).
+						httpx.RequestError: Se houver um problema de conexão com a API.
+				"""
         try:
             with httpx.Client() as client:
                 response = client.get(

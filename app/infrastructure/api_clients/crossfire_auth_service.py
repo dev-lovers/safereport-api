@@ -5,14 +5,14 @@ AUTH_API_URL = "https://api-service.fogocruzado.org.br/api/v2/auth/login"
 
 
 class CrossfireAuthService:
-    """
-    Serviço de infraestrutura para lidar com a autenticação na Crossfire API.
-    Não tem uma interface de domínio, pois é um serviço de infraestrutura puro.
-    """
 
     def get_auth_token(self, email: str, password: str) -> Optional[str]:
         """
         Obtém o token de autenticação da API.
+        
+        Args:
+					email (str): O email do usuário.
+					password (str): A senha do usuário.
 
         Raises:
             httpx.HTTPStatusError: Se a API externa retornar um erro (4xx, 5xx).
