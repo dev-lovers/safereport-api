@@ -1,43 +1,43 @@
-from typing import Dict
+from typing import Dict, List
 
 import pandas as pd
 import numpy as np
 from sklearn.cluster import DBSCAN
 
-from app.domain.services.hotspot_analysis_service import IHotspotAnalysisService
 
+class SklearnIHotspotAnalysisService:
 
-class SklearnIHotspotAnalysisService(IHotspotAnalysisService):
-    """
-    Implementação concreta de IHotspotAnalysisService usando scikit-learn.
-    """
-
-    def analyze_occurrences(self, occurrences: list[Dict]) -> list[Dict]:
+    def analyze_occurrences(self, occurrences: List[Dict]) -> List[Dict]:
         if not occurrences:
             return []
 
         df = pd.DataFrame(occurrences)
 
-        # O seu código de análise assume as chaves latitude e longitude.
-        # Vamos garantir que elas existam.
-        df["latitude"] = pd.to_numeric(df.get("latitude", 0))
-        df["longitude"] = pd.to_numeric(df.get("longitude", 0))
+        required_columns = ["latitude", "longitude"]
+        if not all(col in df.columns for col in required_columns):
+            raise ValueError(f"As colunas {required_columns} são obrigatórias.")
 
-        coords = np.radians(df[["latitude", "longitude"]].values)
+        for col in required_columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
-        kms_per_radian = 6371
-        epsilon = 1.5 / kms_per_radian
+        df.dropna(subset=required_columns, inplace=True)
+        if df.empty:
+            return []
+
+        coords_radians = np.radians(df[["latitude", "longitude"]].values)
+        kms_per_radian = 6371.0
+
+        epsilon_km = 1.5
+        epsilon_radians = epsilon_km / kms_per_radian
         min_samples = 3
 
         db = DBSCAN(
-            eps=epsilon,
+            eps=epsilon_radians,
             min_samples=min_samples,
             algorithm="ball_tree",
             metric="haversine",
-        ).fit(coords)
+        ).fit(coords_radians)
 
         df["cluster"] = db.labels_
 
-        resultado_final = df.to_dict(orient="records")
-
-        return resultado_final
+        return df.to_dict(orient="records")
