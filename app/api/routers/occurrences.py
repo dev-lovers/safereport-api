@@ -1,4 +1,7 @@
 import httpx
+import time
+import json
+import redis
 from typing import Optional
 from collections import Counter
 from fastapi import APIRouter, HTTPException, Response, Depends, Cookie
@@ -14,6 +17,8 @@ from app.infrastructure.services.hotspot_analysis.sklearn_hotspot_analysis_servi
 from app.application.usecases.occurrences.get_occurrence_hotspots import (
     GetOccurrenceHotspotsUseCase,
 )
+
+from app.infrastructure.cache.redis import r
 
 
 router = APIRouter(prefix="/occurrences", tags=["occurrences"])
@@ -43,6 +48,41 @@ async def get_occurrence_hotspots(
     """
     Obtém e analisa hotspots de ocorrências.
     """
+
+    tempo_inicial = time.perf_counter()  # Ou time.time()
+
+    try:
+        analysis_id = (
+            f"hotspot_{location.city_name.lower()}_{location.state_name.lower()}"
+        )
+        cached_data = r.get(analysis_id)
+
+        if cached_data:
+            data = json.loads(cached_data)
+
+            print(
+                f"Dados encontrados no Redis para a chave: '{analysis_id}'. Retornando dados salvos."
+            )
+
+            # Registra o tempo final
+            tempo_final = time.perf_counter()  # Ou time.time()
+
+            # Calcula a diferença e imprime o resultado
+            tempo_decorrido = tempo_final - tempo_inicial
+            print(f"Tempo de execução: {tempo_decorrido:.4f} segundos")
+            return data
+
+    except redis.exceptions.ConnectionError as e:
+        print(f"Erro de conexão com o Redis. Prosseguindo com a análise. Erro: {e}")
+    except json.JSONDecodeError:
+        print(
+            f"Erro ao decodificar dados da chave '{analysis_id}'. Prosseguindo com a análise."
+        )
+
+    print(
+        f"Dados não encontrados no Redis para a chave: '{analysis_id}'. Iniciando análise..."
+    )
+
     try:
         use_case = GetOccurrenceHotspotsUseCase(
             auth_service=auth_service,
@@ -57,10 +97,29 @@ async def get_occurrence_hotspots(
             state_name=location.state_name,
         )
 
-        cluster_counts = Counter(occ["cluster"] for occ in analyzed_data)
-        print("Cluster counts:", dict(cluster_counts))
+        #
+
+        # Registra o tempo final
+        tempo_final = time.perf_counter()  # Ou time.time()
+
+        # Calcula a diferença e imprime o resultado
+        tempo_decorrido = tempo_final - tempo_inicial
+        print(f"Tempo de execução: {tempo_decorrido:.4f} segundos")
+
+        # 3. Salva os dados no Redis para uso futuro
+        try:
+            data_to_save = json.dumps(analyzed_data)
+            r.set(analysis_id, data_to_save)
+            print(f"Análise concluída e salva no Redis com a chave: '{analysis_id}'")
+        except Exception as e:
+            print(f"Erro ao salvar dados no Redis: {e}")
 
         return {"message": "List of occurrence hotspots", "data": analyzed_data}
+
+        # cluster_counts = Counter(occ["cluster"] for occ in analyzed_data)
+        # print("Cluster counts:", dict(cluster_counts))
+
+        # return {"message": "List of occurrence hotspots", "data": analyzed_data}
 
     except ValueError as e:
         raise HTTPException(

@@ -4,8 +4,11 @@ import pandas as pd
 import numpy as np
 from sklearn.cluster import DBSCAN
 
+# Apenas para ilustração, não é necessário na implementação real
+# from app.domain.services.hotspot_analysis_service import IHotspotAnalysisService
 
-class SklearnIHotspotAnalysisService:
+
+class SklearnIHotspotAnalysisService:  # A classe é mantida para exemplo
 
     def analyze_occurrences(self, occurrences: List[Dict]) -> List[Dict]:
         if not occurrences:
