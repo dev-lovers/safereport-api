@@ -37,7 +37,7 @@ async def autocomplete_place(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/geocode", response_model=GeocodeResponse)
+@router.post("/geocode")
 async def geocode_place(
     payload: GeocodeRequest,
     geocode_service: GeocodeService = Depends(get_geocode_service),
@@ -48,7 +48,7 @@ async def geocode_place(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/geocode/reverse", response_model=ReverseGeocodeResponse)
+@router.post("/geocode/reverse")
 async def reverse_geocode_place(
     payload: ReverseGeocodeRequest,
     reverse_geocode_service: ReverseGeocodeService = Depends(

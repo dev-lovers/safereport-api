@@ -3,9 +3,6 @@ from datetime import datetime
 from typing import List, Optional
 
 
-# Entidades para a Estrutura de Localização e Dados Simples
-
-
 @dataclass
 class State:
     id: str
@@ -70,9 +67,6 @@ class AgentStatus:
     type: str
 
 
-# Entidades para Contexto e Vítimas
-
-
 @dataclass
 class ContextInfo:
     main_reason: MainReason
@@ -107,9 +101,6 @@ class Victim:
     unit: str
 
 
-# Entidade Principal: Ocorrência
-
-
 @dataclass
 class Occurrence:
     id: str
@@ -131,17 +122,3 @@ class Occurrence:
     transports: List[str]
     victims: List[Victim]
     animal_victims: List[str]
-
-
-@dataclass
-class OccurrenceFiltered:
-    """
-    Entidade de domínio para representar uma ocorrência.
-    """
-
-    id: int
-    title: str
-    description: Optional[str]
-    latitude: Optional[float]
-    longitude: Optional[float]
-    created_at: str

@@ -1,18 +1,19 @@
 import httpx
 from app.core.config import settings
 
+
 AUTOCOMPLETE_API_URL = "https://places.googleapis.com/v1/places:searchText"
 
 
 class AutocompleteService:
 
-    def get_suggestions(self, query: str) -> list[str]:
+    def get_suggestions(self, query):
         """
         Obtém sugestões de autocomplete da API.
-        
+
         Args:
-					query (str): O texto de consulta para o qual obter sugestões.
-        
+          query (str): O texto de consulta para o qual obter sugestões.
+
         Raises:
           httpx.HTTPStatusError: Se a API externa retornar um erro (4xx, 5xx).
           httpx.RequestError: Se houver um problema de conexão com a API.
@@ -20,7 +21,7 @@ class AutocompleteService:
         headers = {
             "Content-Type": "application/json",
             "X-Goog-Api-Key": settings.GOOGLE_MAPS_API_KEY,
-            "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.priceLevel",
+            "X-Goog-FieldMask": "*",
         }
 
         try:
@@ -36,7 +37,19 @@ class AutocompleteService:
                 response_data = response.json()
 
                 suggestions = response_data.get("places", [])
-                return suggestions
+
+                new_suggestions = [
+                    {
+                        "id": place.get("id", ""),
+                        "address": place.get("formattedAddress", ""),
+                        "description": place.get("displayName", {}).get("text", ""),
+                        "latitude": place.get("location", {}).get("latitude", 0.0),
+                        "longitude": place.get("location", {}).get("longitude", 0.0),
+                    }
+                    for place in suggestions
+                ]
+
+                return new_suggestions
 
         except httpx.HTTPStatusError as e:
             raise ValueError(f"Falha ao obter sugestões: {e}")

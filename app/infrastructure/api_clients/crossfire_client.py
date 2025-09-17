@@ -2,7 +2,7 @@ import httpx
 from fastapi import HTTPException
 from typing import Optional
 
-from app.domain.entities.occurrence import Occurrence, OccurrenceFiltered
+from app.domain.entities.occurrence import Occurrence
 from app.domain.repositories.occurrence import OccurrenceGateway
 
 CROSSFIRE_API_BASE_URL = "https://api-service.fogocruzado.org.br/api/v2"
