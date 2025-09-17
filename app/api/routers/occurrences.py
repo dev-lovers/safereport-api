@@ -5,6 +5,7 @@ import redis
 from typing import Optional
 from collections import Counter
 from fastapi import APIRouter, HTTPException, Response, Depends, Cookie
+import requests
 
 from app.core.config import settings
 from app.api.schemas.location import LocationSchema
@@ -17,6 +18,8 @@ from app.infrastructure.services.hotspot_analysis.sklearn_hotspot_analysis_servi
 from app.application.usecases.occurrences.get_occurrence_hotspots import (
     GetOccurrenceHotspotsUseCase,
 )
+
+from app.core.config import settings
 
 from app.infrastructure.cache.redis import r
 
@@ -51,10 +54,21 @@ async def get_occurrence_hotspots(
 
     tempo_inicial = time.perf_counter()  # Ou time.time()
 
+    #########
+    url = f"https://maps.googleapis.com/maps/api/geocode/json?latlng={location.latitude},{location.longitude}&key={settings.GOOGLE_MAPS_API_KEY}"
+    response = requests.get(url).json()
+
+    if response["status"] == "OK":
+        for component in response["results"][0]["address_components"]:
+            if "administrative_area_level_2" in component["types"]:
+                cidade = component["long_name"]
+            if "administrative_area_level_1" in component["types"]:
+                estado = component["long_name"]
+
+    #######
+
     try:
-        analysis_id = (
-            f"hotspot_{location.city_name.lower()}_{location.state_name.lower()}"
-        )
+        analysis_id = f"hotspot_{cidade.lower()}_{estado.lower()}"
         cached_data = r.get(analysis_id)
 
         if cached_data:
@@ -93,8 +107,8 @@ async def get_occurrence_hotspots(
         analyzed_data = use_case.execute(
             email=settings.EMAIL_CROSSFIRE_API,
             password=settings.PASSWORD_CROSSFIRE_API,
-            city_name=location.city_name,
-            state_name=location.state_name,
+            city_name=cidade,
+            state_name=estado,
         )
 
         #

@@ -11,5 +11,10 @@ from pydantic import BaseModel
 
 
 class LocationSchema(BaseModel):
-    city_name: str
-    state_name: str
+    latitude: float
+    longitude: float
+
+
+# class LocationSchema(BaseModel):
+#     city_name: str
+#     state_name: str
