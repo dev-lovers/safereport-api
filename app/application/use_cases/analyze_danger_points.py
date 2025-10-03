@@ -1,0 +1,46 @@
+from typing import List
+import pandas as pd
+import numpy as np
+from sklearn.cluster import DBSCAN
+from domain.entities.occurrence import Occurrence
+
+
+class AnalyzeDangerPointsUseCase:
+
+    def __init__(self, epsilon_km: float = 1.5, min_samples: int = 3):
+        self.epsilon_km = epsilon_km
+        self.min_samples = min_samples
+
+    def execute(self, occurrences: List[Occurrence]) -> List[Occurrence]:
+        if not occurrences:
+            return []
+
+        # Converte lista de entidades em DataFrame
+        df = pd.DataFrame([o.__dict__ for o in occurrences])
+
+        required_columns = ["latitude", "longitude"]
+        if not all(col in df.columns for col in required_columns):
+            raise ValueError(f"As colunas {required_columns} são obrigatórias.")
+
+        # Garantir que latitude e longitude são numéricas
+        for col in required_columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+        df.dropna(subset=required_columns, inplace=True)
+        if df.empty:
+            return []
+
+        # DBSCAN usando coordenadas em radianos
+        coords_radians = np.radians(df[["latitude", "longitude"]].values)
+        kms_per_radian = 6371.0
+        epsilon_radians = self.epsilon_km / kms_per_radian
+
+        db = DBSCAN(
+            eps=epsilon_radians,
+            min_samples=self.min_samples,
+            algorithm="ball_tree",
+            metric="haversine",
+        ).fit(coords_radians)
+
+        df["cluster"] = db.labels_
+
+        return df.to_dict(orient="records")

@@ -1,13 +1,15 @@
 import httpx
-
 from fastapi import HTTPException
+
+from app.application.dtos.geocoding_dto import GeocodingResultDTO
 from app.core.config import settings
+from app.domain.repositories.geocode_repository import GeocodeRepository
 
-GEOCODE_API_URL = "https://maps.googleapis.com/maps/api/geocode/json"
+GEOCODING_API_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 
 
-class GeocodeService:
-    def geocode(self, address: str):
+class GeocodeService(GeocodeRepository):
+    def get_coordinates(self, address: str) -> GeocodingResultDTO:
         """
         Obtém as coordenadas (latitude e longitude) para um endereço fornecido.
 
@@ -21,46 +23,44 @@ class GeocodeService:
         try:
             with httpx.Client() as client:
                 response = client.get(
-                    GEOCODE_API_URL,
+                    GEOCODING_API_URL,
                     params={"address": address, "key": settings.GOOGLE_MAPS_API_KEY},
                     timeout=10.0,
                 )
 
                 response.raise_for_status()
-                response_data = response.json()
+                geocode_response = response.json()
 
                 if (
-                    response_data["status"] == "ZERO_RESULTS"
-                    and not response_data["results"]
+                        geocode_response["status"] == "ZERO_RESULTS"
+                        and not geocode_response["results"]
                 ):
                     raise HTTPException(
                         status_code=404,
                         detail="Não foi possível decodificar o endereço",
                     )
 
-                coords = response_data["results"][0]["geometry"]["location"]
-                lat = coords["lat"]
-                lng = coords["lng"]
+                # TODO: Revisar o nome da variável "most_compatible_address"
+                most_compatible_address = geocode_response["results"][0]
 
-                description = ""
-                for component in response_data["results"][0].get(
-                    "address_components", []
-                ):
+                location_data = most_compatible_address["geometry"]["location"]
+                latitude = location_data["lat"]
+                longitude = location_data["lng"]
+
+                street_name = ""
+                for component in most_compatible_address.get("address_components", []):
                     if "route" in component.get("types", []):
-                        description = component.get("long_name", "")
+                        street_name = component.get("long_name", "")
 
-                new_response = {
-                    "id": response_data["results"][0].get("place_id", ""),
-                    "formatted_address": response_data["results"][0].get(
-                        "formatted_address", ""
-                    ),
-                    "description": description,
-                    "latitude": lat,
-                    "longitude": lng,
-                }
+                geocode_result = GeocodingResultDTO(
+                    id=most_compatible_address.get("place_id", ""),
+                    formatted_address=most_compatible_address.get("formatted_address", ""),
+                    description=street_name,
+                    latitude=latitude,
+                    longitude=longitude,
+                )
 
-                return new_response
-                return response_data
+                return geocode_result
 
         except httpx.HTTPStatusError as e:
             raise ValueError(f"Falha ao obter sugestões: {e}")

@@ -1,12 +1,12 @@
 import httpx
-from app.core.config import settings
 
+from app.core.config import settings
+from app.domain.repositories.autocomplete_repository import AutocompleteRepository
 
 AUTOCOMPLETE_API_URL = "https://places.googleapis.com/v1/places:searchText"
 
 
-class AutocompleteService:
-
+class AutocompleteService(AutocompleteRepository):
     def get_suggestions(self, query):
         """
         Obtém sugestões de autocomplete da API.
