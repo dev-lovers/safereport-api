@@ -1,14 +1,16 @@
-import httpx
-from fastapi import HTTPException
+import asyncio
 from typing import Optional
 
+import httpx
+from fastapi import HTTPException
+
 from app.domain.entities.occurrence import Occurrence
-from app.domain.repositories.occurrence import OccurrenceGateway
+from app.domain.repositories.occurrence_repository import OccurrenceRepository
 
 CROSSFIRE_API_BASE_URL = "https://api-service.fogocruzado.org.br/api/v2"
 
 
-class CrossfireAPIService(OccurrenceGateway):
+class CrossfireAPIService(OccurrenceRepository):
 
     def __init__(self):
         self._access_token: list[str] = None
@@ -80,7 +82,8 @@ class CrossfireAPIService(OccurrenceGateway):
                     return city_info.get("id")
             return None
 
-    def get_occurrences(self, city_name: str, state_name: str) -> list[Occurrence]:
+    async def get_occurrences(self, city_name: str, state_name: str, initial_date: str, final_date: str) -> list[
+        Occurrence]:
         """
         Busca ocorrências da API externa usando o nome da cidade e do estado.
         """
@@ -95,26 +98,52 @@ class CrossfireAPIService(OccurrenceGateway):
                 f"Localização '{city_name}, {state_name}' não encontrada."
             )
 
-        with httpx.Client() as client:
-            params = {
-                "order": "ASC",
-                "initialdate": "2025-07-04",
-                "finaldate": "2025-08-04",
-                "idState": state_id,
-                "idCities": city_id,
-            }
+        print(initial_date, '->', final_date)
+        max_pages = 25
 
-            response = client.get(
-                f"{CROSSFIRE_API_BASE_URL}/occurrences",
-                headers=self._headers,
-                params=params,
-                timeout=10.0,
-            )
-            response.raise_for_status()
-            response_data = response.json()
+        take = 150
+        occurrences = []
 
-            if response_data.get("code") != 200:
-                raise HTTPException("Ocorrências não encontradas para a localização.")
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            tasks = []
 
-            occurrences_raw = response_data.get("data", [])
-            return occurrences_raw
+            for page in range(1, max_pages + 1):
+                params = {
+                    "order": "ASC",
+                    "initialdate": initial_date,
+                    "finaldate": final_date,
+                    "idState": state_id,
+                    "idCities": city_id,
+                    "take": take,
+                    "page": page,
+                }
+                tasks.append(client.get(
+                    f"{CROSSFIRE_API_BASE_URL}/occurrences",
+                    headers=self._headers,
+                    params=params,
+                ))
+
+            # executa todas em paralelo 🚀
+            responses = await asyncio.gather(*tasks, return_exceptions=True)
+
+            for page, response in enumerate(responses, start=1):
+                if isinstance(response, Exception):
+                    print(f"❌ Erro na página {page}: {response}")
+                    continue
+
+                response.raise_for_status()
+                data = response.json()
+
+                if data.get("code") != 200:
+                    print(f"⚠️ Página {page} não retornou código 200")
+                    continue
+
+                occurrences_raw = data.get("data", [])
+                occurrences.extend(occurrences_raw)
+
+                # early stop: se veio menos do que o esperado, acabou
+                if len(occurrences_raw) < take:
+                    print(f"Fim dos registros na página {page}")
+                    break
+
+        return occurrences
