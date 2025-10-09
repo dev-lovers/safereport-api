@@ -13,4 +13,5 @@ dependencies = [
     "pydantic-settings>=2.10.1",
     "redis>=6.4.0",
     "scikit-learn>=1.7.1",
+    "supabase>=2.22.0",
 ]

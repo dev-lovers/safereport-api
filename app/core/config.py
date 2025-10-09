@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     PASSWORD_CROSSFIRE_API: str
     GOOGLE_MAPS_API_KEY: str
 
+    SUPABASE_URL: str
+    SUPABASE_KEY: str
+
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
