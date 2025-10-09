@@ -7,16 +7,16 @@ import httpx
 from fastapi import APIRouter, HTTPException, Depends, Cookie
 from fastapi.responses import HTMLResponse
 
-from app.api.schemas.location import LocationSchema
+from app.api.schemas.coordinates import CoordinateScheme
 from app.core.config import settings
-from app.infrastructure.api_clients.crossfire_auth_service import CrossfireAuthService
 from app.infrastructure.api_clients.crossfire_client import CrossfireAPIService
+from app.infrastructure.services.crossfire_auth_service import CrossfireAuthService
 from app.services.occurrences_service import OccurrencesProcessor
 
-router = APIRouter(prefix="/occurrences", tags=["occurrences"])
+router = APIRouter(prefix="/occurrences", tags=["Occurrences"])
 
 
-def get_auth_service() -> CrossfireAuthService:
+def get_crossfire_auth_service() -> CrossfireAuthService:
     return CrossfireAuthService()
 
 
@@ -48,7 +48,7 @@ async def get_city_and_state(latitude: float, longitude: float) -> tuple[str, st
     if not cidade or not estado:
         raise HTTPException(
             status_code=404,
-            detail="Cidade ou estado não encontrados para as coordenadas fornecidas."
+            detail="Cidade ou estado não encontrados para as coordenadas fornecidas.",
         )
 
     return cidade, estado
@@ -70,11 +70,7 @@ async def generate_map(occurrences: list[dict]) -> str:
         if lat and lon:
             color = "green" if cluster == -1 else "red"
             folium.CircleMarker(
-                location=[lat, lon],
-                radius=4,
-                color=color,
-                fill=True,
-                fill_opacity=0.6
+                location=[lat, lon], radius=4, color=color, fill=True, fill_opacity=0.6
             ).add_to(m)
 
     return m._repr_html_()
@@ -82,40 +78,46 @@ async def generate_map(occurrences: list[dict]) -> str:
 
 @router.post("/")
 async def get_occurrences(
-        location: LocationSchema,
-        auth_service: CrossfireAuthService = Depends(get_auth_service),
-        occurrence_gateway: CrossfireAPIService = Depends(get_occurrence_gateway),
-        # TODO: Verificar uso futuro do cookie
-        access_token: Optional[str] = Cookie(None),
+    coordinates: CoordinateScheme,
+    crossfire_auth_service: CrossfireAuthService = Depends(get_crossfire_auth_service),
+    occurrence_gateway: CrossfireAPIService = Depends(get_occurrence_gateway),
+    # TODO: Verificar uso futuro do cookie
+    access_token: Optional[str] = Cookie(None),
 ):
     """
     Retorna as ocorrências brutas para a cidade/estado obtidos pela latitude e longitude.
     """
     try:
-        city, state = await get_city_and_state(location.latitude, location.longitude)
+        city, state = await get_city_and_state(
+            coordinates.latitude, coordinates.longitude
+        )
 
-        access_token = auth_service.get_auth_token(
-            settings.EMAIL_CROSSFIRE_API,
-            settings.PASSWORD_CROSSFIRE_API
+        access_token = crossfire_auth_service.get_auth_token(
+            settings.EMAIL_CROSSFIRE_API, settings.PASSWORD_CROSSFIRE_API
         )
         if not access_token:
             raise ValueError("Não foi possível obter o token de autenticação.")
         occurrence_gateway.set_access_token(access_token)
 
         today = date.today()
-        final_date = today.strftime('%Y-%m-%d')
-        initial_date = (today - timedelta(days=90)).strftime('%Y-%m-%d')
+        final_date = today.strftime("%Y-%m-%d")
+        initial_date = (today - timedelta(days=90)).strftime("%Y-%m-%d")
 
-        occurrences = await occurrence_gateway.get_occurrences(city_name=city, state_name=state,
-                                                               initial_date=initial_date, final_date=final_date)
-        print('Número de ocorrências obtidas:', len(occurrences))
+        occurrences = await occurrence_gateway.get_occurrences(
+            city_name=city,
+            state_name=state,
+            initial_date=initial_date,
+            final_date=final_date,
+        )
 
         return {"message": "Raw occurrences list", "data": occurrences}
 
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
     except (httpx.HTTPStatusError, httpx.RequestError) as exc:
-        status_code = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else 503
+        status_code = (
+            exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else 503
+        )
         detail = (
             f"Erro na API do CrossFire. {exc.response.text}"
             if isinstance(exc, httpx.HTTPStatusError)
@@ -123,21 +125,21 @@ async def get_occurrences(
         )
         raise HTTPException(status_code=status_code, detail=detail)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ocorreu um erro inesperado: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Ocorreu um erro inesperado: {str(e)}"
+        )
 
 
 @router.post("/hotspots")
 async def analyze_occurrences(
-        location: LocationSchema,
-        auth_service: CrossfireAuthService = Depends(get_auth_service),
-        occurrence_gateway: CrossfireAPIService = Depends(get_occurrence_gateway),
-        access_token: Optional[str] = Cookie(None),
+    location: CoordinateScheme,
+    crossfire_auth_service: CrossfireAuthService = Depends(get_crossfire_auth_service),
+    occurrence_gateway: CrossfireAPIService = Depends(get_occurrence_gateway),
+    access_token: Optional[str] = Cookie(None),
 ):
     """
     Obtém e analisa hotspots de ocorrências com DBSCAN.
     """
-    tempo_inicial = time.perf_counter()
-
     try:
         cidade, estado = await get_city_and_state(location.latitude, location.longitude)
         print(f"Analisando hotspots de {cidade}/{estado}")
@@ -153,18 +155,21 @@ async def analyze_occurrences(
         #     print("Dados encontrados no cache Redis.")
         #     return {"message": "Hotspots (cached)", "data": cached_data}
 
-        access_token = auth_service.get_auth_token(
-            settings.EMAIL_CROSSFIRE_API,
-            settings.PASSWORD_CROSSFIRE_API
+        access_token = crossfire_auth_service.get_auth_token(
+            settings.EMAIL_CROSSFIRE_API, settings.PASSWORD_CROSSFIRE_API
         )
         occurrence_gateway.set_access_token(access_token)
 
         today = date.today()
-        final_date = today.strftime('%Y-%m-%d')
-        initial_date = (today - timedelta(days=365)).strftime('%Y-%m-%d')
+        final_date = today.strftime("%Y-%m-%d")
+        initial_date = (today - timedelta(days=365)).strftime("%Y-%m-%d")
 
-        occurrences = await occurrence_gateway.get_occurrences(city_name=cidade, state_name=estado,
-                                                               initial_date=initial_date, final_date=final_date)
+        occurrences = await occurrence_gateway.get_occurrences(
+            city_name=cidade,
+            state_name=estado,
+            initial_date=initial_date,
+            final_date=final_date,
+        )
 
         processor = OccurrencesProcessor(epsilon_km=0.7, min_samples=8)
         analyzed_data = processor.cluster_occurrences(occurrences)
@@ -172,15 +177,14 @@ async def analyze_occurrences(
         # --- Cache opcional ---
         # await set_cached_data(redis_client, analysis_id, analyzed_data)
 
-        tempo_final = time.perf_counter()
-        print(f"Tempo de execução (análise): {tempo_final - tempo_inicial:.4f} segundos")
-
         return {"message": "List of occurrence hotspots", "data": analyzed_data}
 
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
     except (httpx.HTTPStatusError, httpx.RequestError) as exc:
-        status_code = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else 503
+        status_code = (
+            exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else 503
+        )
         detail = (
             f"Erro na API do CrossFire. {exc.response.text}"
             if isinstance(exc, httpx.HTTPStatusError)
@@ -188,29 +192,37 @@ async def analyze_occurrences(
         )
         raise HTTPException(status_code=status_code, detail=detail)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ocorreu um erro inesperado: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Ocorreu um erro inesperado: {str(e)}"
+        )
 
 
 @router.post("/hotspots/map")
 async def get_occurrences_map(
-        location: LocationSchema,
-        auth_service: CrossfireAuthService = Depends(get_auth_service),
-        occurrence_gateway: CrossfireAPIService = Depends(get_occurrence_gateway),
+    location: CoordinateScheme,
+    crossfire_auth_service: CrossfireAuthService = Depends(get_crossfire_auth_service),
+    occurrence_gateway: CrossfireAPIService = Depends(get_occurrence_gateway),
 ):
     """
     Gera um mapa interativo das ocorrências (teste visual).
     """
     cidade, estado = await get_city_and_state(location.latitude, location.longitude)
 
-    access_token = auth_service.get_auth_token(settings.EMAIL_CROSSFIRE_API, settings.PASSWORD_CROSSFIRE_API)
+    access_token = crossfire_auth_service.get_auth_token(
+        settings.EMAIL_CROSSFIRE_API, settings.PASSWORD_CROSSFIRE_API
+    )
     occurrence_gateway.set_access_token(access_token)
 
     today = date.today()
-    final_date = today.strftime('%Y-%m-%d')
-    initial_date = (today - timedelta(days=365)).strftime('%Y-%m-%d')
+    final_date = today.strftime("%Y-%m-%d")
+    initial_date = (today - timedelta(days=365)).strftime("%Y-%m-%d")
 
-    occurrences = await occurrence_gateway.get_occurrences(city_name=cidade, state_name=estado,
-                                                           initial_date=initial_date, final_date=final_date)
+    occurrences = await occurrence_gateway.get_occurrences(
+        city_name=cidade,
+        state_name=estado,
+        initial_date=initial_date,
+        final_date=final_date,
+    )
 
     processor = OccurrencesProcessor(epsilon_km=0.7, min_samples=8)
     processed = processor.cluster_occurrences(occurrences)

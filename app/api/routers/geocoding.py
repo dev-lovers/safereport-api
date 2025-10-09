@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from app.infrastructure.api_clients.geocode_service import GeocodeService
 from app.infrastructure.api_clients.reverse_geocode_service import ReverseGeocodeService
 
-router = APIRouter(prefix="/geocoding", tags=["Places"])
+router = APIRouter(prefix="/geocoding", tags=["Geocoding"])
 
 
 def get_geocode_service() -> GeocodeService:
@@ -16,8 +16,8 @@ def get_reverse_geocode_service() -> ReverseGeocodeService:
 
 @router.get("/")
 async def geocode_place(
-        address: str = Query(..., description="Endereço completo para geocodificação"),
-        geocode_service: GeocodeService = Depends(get_geocode_service),
+    address: str = Query(..., description="Endereço completo para geocodificação"),
+    geocode_service: GeocodeService = Depends(get_geocode_service),
 ):
     try:
         return geocode_service.get_coordinates(address=address)
@@ -27,11 +27,15 @@ async def geocode_place(
 
 @router.get("/reverse")
 async def reverse_geocode_place(
-        latitude: float = Query(..., description="Latitude do local"),
-        longitude: float = Query(..., description="Longitude do local"),
-        reverse_geocode_service: ReverseGeocodeService = Depends(get_reverse_geocode_service),
+    latitude: float = Query(..., description="Latitude do local"),
+    longitude: float = Query(..., description="Longitude do local"),
+    reverse_geocode_service: ReverseGeocodeService = Depends(
+        get_reverse_geocode_service
+    ),
 ):
     try:
-        return reverse_geocode_service.get_address(latitude=latitude, longitude=longitude)
+        return reverse_geocode_service.get_address(
+            latitude=latitude, longitude=longitude
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

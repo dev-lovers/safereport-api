@@ -82,8 +82,9 @@ class CrossfireAPIService(OccurrenceRepository):
                     return city_info.get("id")
             return None
 
-    async def get_occurrences(self, city_name: str, state_name: str, initial_date: str, final_date: str) -> list[
-        Occurrence]:
+    async def get_occurrences(
+        self, city_name: str, state_name: str, initial_date: str, final_date: str
+    ) -> list[Occurrence]:
         """
         Busca ocorrências da API externa usando o nome da cidade e do estado.
         """
@@ -98,7 +99,6 @@ class CrossfireAPIService(OccurrenceRepository):
                 f"Localização '{city_name}, {state_name}' não encontrada."
             )
 
-        print(initial_date, '->', final_date)
         max_pages = 25
 
         take = 150
@@ -117,13 +117,14 @@ class CrossfireAPIService(OccurrenceRepository):
                     "take": take,
                     "page": page,
                 }
-                tasks.append(client.get(
-                    f"{CROSSFIRE_API_BASE_URL}/occurrences",
-                    headers=self._headers,
-                    params=params,
-                ))
+                tasks.append(
+                    client.get(
+                        f"{CROSSFIRE_API_BASE_URL}/occurrences",
+                        headers=self._headers,
+                        params=params,
+                    )
+                )
 
-            # executa todas em paralelo 🚀
             responses = await asyncio.gather(*tasks, return_exceptions=True)
 
             for page, response in enumerate(responses, start=1):
@@ -143,7 +144,6 @@ class CrossfireAPIService(OccurrenceRepository):
 
                 # early stop: se veio menos do que o esperado, acabou
                 if len(occurrences_raw) < take:
-                    print(f"Fim dos registros na página {page}")
                     break
 
         return occurrences
