@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  safereport_api:
+    build: .
+    container_name: safereport_api
+    ports:
+      - "8080:80" 
+    depends_on:
+      - safereport_redis
+    environment:
+      REDIS_HOST: safereport_redis
+      REDIS_PORT: 6379
+    networks:
+      - safereport_network
+
+  safereport_redis:
+    image: redis:7-alpine
+    container_name: safereport_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - safereport_redis_volume_data:/data 
+    networks:
+      - safereport_network
+
+volumes:
+  safereport_redis_volume_data:
+    name: safereport_redis_volume
+
+networks:
+  safereport_network:
+    name: safereport_network
