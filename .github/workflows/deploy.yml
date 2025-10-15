@@ -1,0 +1,39 @@
+name: CI/CD SafeReport API
+
+on:
+  push:
+    branches:
+      - main 
+
+jobs:
+  deploy_via_ssh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: 🚀 Executar Deploy Remoto (Pull e Build no Droplet)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          
+          script: |
+            # 1. Instala o plugin 'docker compose'
+            sudo apt-get update && sudo apt-get install docker-compose-plugin -y
+            
+            # 2. Navega até o diretório de deploy
+            DEPLOY_PATH="/srv/safereport-api"
+            cd $DEPLOY_PATH
+            
+            # 3. Puxa o código mais recente
+            git pull origin main
+            
+            # 4. Parar e remover containers antigos
+            docker compose down
+            
+            # 5. Construir a nova imagem e subir os serviços
+            docker compose up -d --build --force-recreate
+            
+            echo "Deploy e construção concluídos no Droplet!"
