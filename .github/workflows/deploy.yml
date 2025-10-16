@@ -6,7 +6,7 @@ on:
       - main 
 
 jobs:
-  deploy_via_ssh:
+  deploy_safereport_api:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout do código
