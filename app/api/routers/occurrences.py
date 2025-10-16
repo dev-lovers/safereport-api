@@ -1,17 +1,16 @@
-import time
 from datetime import date, timedelta
 from typing import Optional
 
-import folium
 import httpx
 from fastapi import APIRouter, HTTPException, Depends, Cookie
-from fastapi.responses import HTMLResponse
 
 from app.api.schemas.coordinates import CoordinateScheme
 from app.core.config import settings
 from app.infrastructure.api_clients.crossfire_client import CrossfireAPIService
 from app.infrastructure.services.crossfire_auth_service import CrossfireAuthService
 from app.services.occurrences_service import OccurrencesProcessor
+
+from app.infrastructure.cache.redis import RedisClient, get_redis_client
 
 router = APIRouter(prefix="/occurrences", tags=["Occurrences"])
 
@@ -54,34 +53,13 @@ async def get_city_and_state(latitude: float, longitude: float) -> tuple[str, st
     return cidade, estado
 
 
-async def generate_map(occurrences: list[dict]) -> str:
-    """
-    Gera um mapa HTML com os pontos de ocorrências.
-    - Cluster -1 = verde (ruído)
-    - Cluster >= 0 = vermelho (zona perigosa)
-    """
-    m = folium.Map(location=[-12.9777, -38.5016], zoom_start=12)
-
-    for occ in occurrences:
-        lat = occ.get("latitude")
-        lon = occ.get("longitude")
-        cluster = occ.get("cluster", -1)
-
-        if lat and lon:
-            color = "green" if cluster == -1 else "red"
-            folium.CircleMarker(
-                location=[lat, lon], radius=4, color=color, fill=True, fill_opacity=0.6
-            ).add_to(m)
-
-    return m._repr_html_()
-
-
 @router.post("/")
 async def get_occurrences(
     coordinates: CoordinateScheme,
     crossfire_auth_service: CrossfireAuthService = Depends(get_crossfire_auth_service),
     occurrence_gateway: CrossfireAPIService = Depends(get_occurrence_gateway),
     # TODO: Verificar uso futuro do cookie
+    redis_client: RedisClient = Depends(get_redis_client),
     access_token: Optional[str] = Cookie(None),
 ):
     """
@@ -91,6 +69,13 @@ async def get_occurrences(
         city, state = await get_city_and_state(
             coordinates.latitude, coordinates.longitude
         )
+
+        analysis_id = f"ocorrences_raw_{city.lower()}_{state.lower()}"
+
+        cached_data = redis_client.get_json_cache(analysis_id)
+
+        if cached_data:
+            return {"message": "Hotspots (cached)", "data": cached_data}
 
         access_token = crossfire_auth_service.get_auth_token(
             settings.EMAIL_CROSSFIRE_API, settings.PASSWORD_CROSSFIRE_API
@@ -109,6 +94,8 @@ async def get_occurrences(
             initial_date=initial_date,
             final_date=final_date,
         )
+
+        redis_client.set_json_cache(analysis_id, occurrences, expire=3600)
 
         return {"message": "Raw occurrences list", "data": occurrences}
 
@@ -135,25 +122,22 @@ async def analyze_occurrences(
     location: CoordinateScheme,
     crossfire_auth_service: CrossfireAuthService = Depends(get_crossfire_auth_service),
     occurrence_gateway: CrossfireAPIService = Depends(get_occurrence_gateway),
+    redis_client: RedisClient = Depends(get_redis_client),
     access_token: Optional[str] = Cookie(None),
 ):
     """
-    Obtém e analisa hotspots de ocorrências com DBSCAN.
+    Obtém e analisa hotspots de ocorrências com DBSCAN, utilizando cache Redis síncrono.
     """
     try:
         cidade, estado = await get_city_and_state(location.latitude, location.longitude)
-        print(f"Analisando hotspots de {cidade}/{estado}")
 
-        # --- Redis (opcional, descomentável futuramente) ---
-        # redis_client = redis.from_url(
-        #     f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}",
-        #     encoding="utf-8", decode_responses=True
-        # )
-        # analysis_id = f"hotspot_{cidade.lower()}_{estado.lower()}"
-        # cached_data = await get_cached_data(redis_client, analysis_id)
-        # if cached_data:
-        #     print("Dados encontrados no cache Redis.")
-        #     return {"message": "Hotspots (cached)", "data": cached_data}
+        analysis_id = f"hotspot_{cidade.lower()}_{estado.lower()}"
+
+        cached_data = redis_client.get_json_cache(analysis_id)
+
+        if cached_data:
+            print("Dados encontrados no cache Redis. Retornando dados em cache.")
+            return {"message": "Hotspots (cached)", "data": cached_data}
 
         access_token = crossfire_auth_service.get_auth_token(
             settings.EMAIL_CROSSFIRE_API, settings.PASSWORD_CROSSFIRE_API
@@ -174,59 +158,17 @@ async def analyze_occurrences(
         processor = OccurrencesProcessor(epsilon_km=0.7, min_samples=8)
         analyzed_data = processor.cluster_occurrences(occurrences)
 
-        # --- Cache opcional ---
-        # await set_cached_data(redis_client, analysis_id, analyzed_data)
+        redis_client.set_json_cache(analysis_id, analyzed_data, expire=172800)
 
         return {"message": "List of occurrence hotspots", "data": analyzed_data}
 
+    except ConnectionRefusedError as e:
+        raise HTTPException(
+            status_code=503, detail=f"Serviço de Cache (Redis) indisponível: {str(e)}"
+        )
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
-    except (httpx.HTTPStatusError, httpx.RequestError) as exc:
-        status_code = (
-            exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else 503
-        )
-        detail = (
-            f"Erro na API do CrossFire. {exc.response.text}"
-            if isinstance(exc, httpx.HTTPStatusError)
-            else "Não foi possível conectar à API do CrossFire no momento."
-        )
-        raise HTTPException(status_code=status_code, detail=detail)
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Ocorreu um erro inesperado: {str(e)}"
         )
-
-
-@router.post("/hotspots/map")
-async def get_occurrences_map(
-    location: CoordinateScheme,
-    crossfire_auth_service: CrossfireAuthService = Depends(get_crossfire_auth_service),
-    occurrence_gateway: CrossfireAPIService = Depends(get_occurrence_gateway),
-):
-    """
-    Gera um mapa interativo das ocorrências (teste visual).
-    """
-    cidade, estado = await get_city_and_state(location.latitude, location.longitude)
-
-    access_token = crossfire_auth_service.get_auth_token(
-        settings.EMAIL_CROSSFIRE_API, settings.PASSWORD_CROSSFIRE_API
-    )
-    occurrence_gateway.set_access_token(access_token)
-
-    today = date.today()
-    final_date = today.strftime("%Y-%m-%d")
-    initial_date = (today - timedelta(days=365)).strftime("%Y-%m-%d")
-
-    occurrences = await occurrence_gateway.get_occurrences(
-        city_name=cidade,
-        state_name=estado,
-        initial_date=initial_date,
-        final_date=final_date,
-    )
-
-    processor = OccurrencesProcessor(epsilon_km=0.7, min_samples=8)
-    processed = processor.cluster_occurrences(occurrences)
-
-    mapa_html = await generate_map(processed)
-
-    return HTMLResponse(content=mapa_html, status_code=200)
