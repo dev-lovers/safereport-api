@@ -1,18 +1,21 @@
+import json
 from datetime import date, timedelta
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, HTTPException, Depends, Cookie
+from fastapi import APIRouter, HTTPException, Depends, Cookie, status
 
 from app.api.schemas.coordinates import CoordinateScheme
 from app.core.config import settings
 from app.infrastructure.api_clients.crossfire_client import CrossfireAPIService
 from app.infrastructure.services.crossfire_auth_service import CrossfireAuthService
-from app.services.occurrences_service import OccurrencesProcessor
 
 from app.infrastructure.cache.redis import RedisClient, get_redis_client
 
 router = APIRouter(prefix="/occurrences", tags=["Occurrences"])
+
+
+CACHE_KEY = "analysis_result_salvador"
 
 
 def get_crossfire_auth_service() -> CrossfireAuthService:
@@ -53,29 +56,35 @@ async def get_city_and_state(latitude: float, longitude: float) -> tuple[str, st
     return cidade, estado
 
 
-@router.post("/")
+@router.get("/")
 async def get_occurrences(
-    coordinates: CoordinateScheme,
+    coordinates: CoordinateScheme = Depends(),
     crossfire_auth_service: CrossfireAuthService = Depends(get_crossfire_auth_service),
     occurrence_gateway: CrossfireAPIService = Depends(get_occurrence_gateway),
-    # TODO: Verificar uso futuro do cookie
     redis_client: RedisClient = Depends(get_redis_client),
-    access_token: Optional[str] = Cookie(None),
 ):
     """
     Retorna as ocorrências brutas para a cidade/estado obtidos pela latitude e longitude.
     """
     try:
+        days_to_search = 31
+
         city, state = await get_city_and_state(
             coordinates.latitude, coordinates.longitude
         )
 
-        analysis_id = f"ocorrences_raw_{city.lower()}_{state.lower()}"
+        today = date.today()
+        today_str = today.strftime("%Y-%m-%d")
+
+        analysis_id = (
+            f"ocorrences_raw_{city.lower()}_{state.lower()}"
+            f"_{today_str}_last{days_to_search}days"
+        )
 
         cached_data = redis_client.get_json_cache(analysis_id)
 
         if cached_data:
-            return {"message": "Hotspots (cached)", "data": cached_data}
+            return {"message": "Raw occurrences list (cached)", "data": cached_data}
 
         access_token = crossfire_auth_service.get_auth_token(
             settings.EMAIL_CROSSFIRE_API, settings.PASSWORD_CROSSFIRE_API
@@ -84,9 +93,8 @@ async def get_occurrences(
             raise ValueError("Não foi possível obter o token de autenticação.")
         occurrence_gateway.set_access_token(access_token)
 
-        today = date.today()
-        final_date = today.strftime("%Y-%m-%d")
-        initial_date = (today - timedelta(days=90)).strftime("%Y-%m-%d")
+        final_date = today_str
+        initial_date = (today - timedelta(days=days_to_search)).strftime("%Y-%m-%d")
 
         occurrences = await occurrence_gateway.get_occurrences(
             city_name=city,
@@ -117,58 +125,48 @@ async def get_occurrences(
         )
 
 
-@router.post("/hotspots")
-async def analyze_occurrences(
-    location: CoordinateScheme,
-    crossfire_auth_service: CrossfireAuthService = Depends(get_crossfire_auth_service),
-    occurrence_gateway: CrossfireAPIService = Depends(get_occurrence_gateway),
+@router.get("/hotspots")
+def get_hotspots(
     redis_client: RedisClient = Depends(get_redis_client),
-    access_token: Optional[str] = Cookie(None),
 ):
     """
-    Obtém e analisa hotspots de ocorrências com DBSCAN, utilizando cache Redis síncrono.
+    Obtém a análise de hotspots de ocorrências mais recente.
+
+    Estes dados são pré-processados por um worker em segundo plano
+    e armazenados em cache para entrega imediata.
     """
     try:
-        cidade, estado = await get_city_and_state(location.latitude, location.longitude)
+        if not redis_client:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Serviço de cache indisponível.",
+            )
 
-        analysis_id = f"hotspot_{cidade.lower()}_{estado.lower()}"
+        cached_data_str = redis_client.get_data(CACHE_KEY)
 
-        cached_data = redis_client.get_json_cache(analysis_id)
+        if cached_data_str is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Nenhum resultado de análise encontrado. O processamento inicial pode estar em andamento.",
+            )
 
-        if cached_data:
-            print("Dados encontrados no cache Redis. Retornando dados em cache.")
-            return {"message": "Hotspots (cached)", "data": cached_data}
+        try:
+            analysis_data_dict = json.loads(cached_data_str)
+        except json.JSONDecodeError as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Erro ao processar dados do cache. Formato inválido.",
+            )
 
-        access_token = crossfire_auth_service.get_auth_token(
-            settings.EMAIL_CROSSFIRE_API, settings.PASSWORD_CROSSFIRE_API
-        )
-        occurrence_gateway.set_access_token(access_token)
+        return {
+            "message": "Análise de hotspots obtida com sucesso",
+            "data": analysis_data_dict,
+        }
 
-        today = date.today()
-        final_date = today.strftime("%Y-%m-%d")
-        initial_date = (today - timedelta(days=365)).strftime("%Y-%m-%d")
-
-        occurrences = await occurrence_gateway.get_occurrences(
-            city_name=cidade,
-            state_name=estado,
-            initial_date=initial_date,
-            final_date=final_date,
-        )
-
-        processor = OccurrencesProcessor(epsilon_km=0.7, min_samples=8)
-        analyzed_data = processor.cluster_occurrences(occurrences)
-
-        redis_client.set_json_cache(analysis_id, analyzed_data, expire=172800)
-
-        return {"message": "List of occurrence hotspots", "data": analyzed_data}
-
-    except ConnectionRefusedError as e:
-        raise HTTPException(
-            status_code=503, detail=f"Serviço de Cache (Redis) indisponível: {str(e)}"
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=401, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Ocorreu um erro inesperado: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ocorreu um erro inesperado no servidor.",
         )
