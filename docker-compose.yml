@@ -1,11 +1,51 @@
 version: "3.9"
 
 services:
+  # Serviço da sua API FastAPI
   safereport_api:
     build: .
     container_name: safereport_api
+    command: gunicorn --bind 0.0.0.0:80 --workers 4 --worker-class uvicorn.workers.UvicornWorker app.main:app
     ports:
-      - "8080:80" 
+      - "8080:80"
+    volumes:
+      - .:/app # Adicionado para desenvolvimento (live-reload)
+    depends_on:
+      - safereport_redis
+    environment:
+      REDIS_HOST: safereport_redis
+      REDIS_PORT: 6379
+      # Adicione aqui as outras variáveis de ambiente (EMAIL_CROSSFIRE_API, etc.)
+    networks:
+      - safereport_network
+
+  # Serviço do Celery Worker
+  safereport_worker:
+    build: .
+    container_name: safereport_worker
+    # Comando específico para iniciar o worker
+    command: celery -A app.tasks:app worker --loglevel=INFO
+    volumes:
+      - .:/app
+    depends_on:
+      - safereport_redis
+    environment:
+      REDIS_HOST: safereport_redis
+      REDIS_PORT: 6379
+      # O worker também precisa das variáveis para se conectar à API externa
+      EMAIL_CROSSFIRE_API: ${EMAIL_CROSSFIRE_API}
+      PASSWORD_CROSSFIRE_API: ${PASSWORD_CROSSFIRE_API}
+    networks:
+      - safereport_network
+
+  # Serviço do Celery Beat (Agendador)
+  safereport_beat:
+    build: .
+    container_name: safereport_beat
+    # Comando específico para iniciar o beat
+    command: celery -A app.tasks:app beat --loglevel=INFO
+    volumes:
+      - .:/app
     depends_on:
       - safereport_redis
     environment:
@@ -14,13 +54,14 @@ services:
     networks:
       - safereport_network
 
+  # Serviço do Redis
   safereport_redis:
     image: redis:7-alpine
     container_name: safereport_redis
     ports:
       - "6379:6379"
     volumes:
-      - safereport_redis_volume_data:/data 
+      - safereport_redis_volume_data:/data
     networks:
       - safereport_network
 
