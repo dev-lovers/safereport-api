@@ -24,7 +24,7 @@ DEFAULT_CITY = "Salvador"
 DEFAULT_STATE = "Bahia"
 DEFAULT_DAYS_AGO = 365
 
-PRODUCTION_SCHEDULE = getattr(settings, "CELERY_BEAT_SCHEDULE", timedelta(days=5))
+PRODUCTION_SCHEDULE = getattr(settings, "CELERY_BEAT_SCHEDULE", timedelta(days=1))
 
 # PRODUCTION_SCHEDULE = getattr(
 #     settings, "CELERY_BEAT_SCHEDULE", crontab(hour=0, minute=1)
