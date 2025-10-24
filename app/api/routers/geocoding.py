@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.infrastructure.api_clients.geocode_service import GeocodeService
 from app.infrastructure.api_clients.reverse_geocode_service import ReverseGeocodeService

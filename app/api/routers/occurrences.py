@@ -1,16 +1,14 @@
 import json
 from datetime import date, timedelta
-from typing import Optional
 
 import httpx
-from fastapi import APIRouter, HTTPException, Depends, Cookie, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.schemas.coordinates import CoordinateScheme
 from app.core.config import settings
 from app.infrastructure.api_clients.crossfire_client import CrossfireAPIService
-from app.infrastructure.services.crossfire_auth_service import CrossfireAuthService
-
 from app.infrastructure.cache.redis import RedisClient, get_redis_client
+from app.infrastructure.services.crossfire_auth_service import CrossfireAuthService
 
 router = APIRouter(prefix="/occurrences", tags=["Occurrences"])
 
@@ -152,7 +150,7 @@ def get_hotspots(
 
         try:
             analysis_data_dict = json.loads(cached_data_str)
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Erro ao processar dados do cache. Formato inválido.",
@@ -165,7 +163,7 @@ def get_hotspots(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Ocorreu um erro inesperado no servidor.",

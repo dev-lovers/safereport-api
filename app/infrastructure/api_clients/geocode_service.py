@@ -32,8 +32,8 @@ class GeocodeService(GeocodeRepository):
                 geocode_response = response.json()
 
                 if (
-                        geocode_response["status"] == "ZERO_RESULTS"
-                        and not geocode_response["results"]
+                    geocode_response["status"] == "ZERO_RESULTS"
+                    and not geocode_response["results"]
                 ):
                     raise HTTPException(
                         status_code=404,
@@ -54,7 +54,9 @@ class GeocodeService(GeocodeRepository):
 
                 geocode_result = GeocodingResultDTO(
                     id=most_compatible_address.get("place_id", ""),
-                    formatted_address=most_compatible_address.get("formatted_address", ""),
+                    formatted_address=most_compatible_address.get(
+                        "formatted_address", ""
+                    ),
                     description=street_name,
                     latitude=latitude,
                     longitude=longitude,

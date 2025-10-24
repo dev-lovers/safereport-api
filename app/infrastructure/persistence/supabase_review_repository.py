@@ -1,6 +1,7 @@
+from typing import Any
+
+from app.domain.entities.review import Ratings, Review
 from app.domain.repositories.review_repository import ReviewRepository
-from app.domain.entities.review import Review, Ratings
-from typing import Any, Dict, List
 from supabase import Client
 
 
@@ -19,7 +20,7 @@ class SupabaseReviewRepository(ReviewRepository):
         self.client = client
         self.table_name = "reviews"
 
-    def _to_db_format(self, review: Review) -> Dict[str, Any]:
+    def _to_db_format(self, review: Review) -> dict[str, Any]:
         """Converte a Entidade Review em um dicionário para inserção no DB."""
 
         ratings_json = {
@@ -33,7 +34,7 @@ class SupabaseReviewRepository(ReviewRepository):
             "comment": review.comment,
         }
 
-    def _to_entity(self, db_row: Dict[str, Any]) -> Review:
+    def _to_entity(self, db_row: dict[str, Any]) -> Review:
         """Converte a linha (row) do DB em uma Entidade Review."""
 
         # Mapeamento do sub-objeto Ratings (se for armazenado como JSONB)
@@ -60,7 +61,7 @@ class SupabaseReviewRepository(ReviewRepository):
 
             response = self.client.table(self.table_name).insert(db_data).execute()
 
-            data: List[Dict[str, Any]] = response.data
+            data: list[dict[str, Any]] = response.data
 
             if not data:
                 raise RepositoryError("A inserção retornou um resultado vazio.")

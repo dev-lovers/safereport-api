@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional
 
 
 @dataclass
@@ -70,10 +69,10 @@ class AgentStatus:
 @dataclass
 class ContextInfo:
     main_reason: MainReason
-    complementary_reasons: List[str]
-    clippings: List[Clipping]
+    complementary_reasons: list[str]
+    clippings: list[Clipping]
     massacre: bool
-    police_unit: Optional[str]
+    police_unit: str | None
 
 
 @dataclass
@@ -82,21 +81,21 @@ class Victim:
     occurrence_id: str
     type: str
     situation: str
-    circumstances: List[str]
+    circumstances: list[str]
     death_date: datetime
     person_type: str
     age: int
     age_group: VictimQualifier
     genre: VictimQualifier
-    race: Optional[str]
+    race: str | None
     place: VictimQualifier
     service_status: VictimQualifier
-    qualifications: List[str]
+    qualifications: list[str]
     political_position: PoliticalStatus
     political_status: PoliticalStatus
-    partie: Optional[str]
+    partie: str | None
     coorporation: Corporation
-    agent_position: Optional[str]
+    agent_position: str | None
     agent_status: AgentStatus
     unit: str
 
@@ -110,15 +109,15 @@ class Occurrence:
     region: Region
     city: City
     neighborhood: Neighborhood
-    sub_neighborhood: Optional[str]
-    locality: Optional[str]
+    sub_neighborhood: str | None
+    locality: str | None
     latitude: float
     longitude: float
     date: datetime
     police_action: bool
     agent_presence: bool
-    related_record: Optional[str]
+    related_record: str | None
     context_info: ContextInfo
-    transports: List[str]
-    victims: List[Victim]
-    animal_victims: List[str]
+    transports: list[str]
+    victims: list[Victim]
+    animal_victims: list[str]

@@ -1,17 +1,15 @@
-import os
-import redis
+import asyncio
 import json
 import logging
-from celery import Celery
-from celery.schedules import crontab
 from datetime import date, timedelta
-import asyncio
 
+import redis
+from celery import Celery
 
-from app.services.occurrences_service import OccurrencesProcessor
+from app.core.config import settings
 from app.infrastructure.api_clients.crossfire_client import CrossfireAPIService
 from app.infrastructure.services.crossfire_auth_service import CrossfireAuthService
-from app.core.config import settings
+from app.services.occurrences_service import OccurrencesProcessor
 
 logger = logging.getLogger(__name__)
 

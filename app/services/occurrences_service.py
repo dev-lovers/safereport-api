@@ -1,4 +1,3 @@
-from typing import List
 
 import numpy as np
 import pandas as pd
@@ -13,7 +12,7 @@ class OccurrencesProcessor:
         self.epsilon_km = epsilon_km
         self.min_samples = min_samples
 
-    def cluster_occurrences(self, occurrences: List[Occurrence]) -> List[Occurrence]:
+    def cluster_occurrences(self, occurrences: list[Occurrence]) -> list[Occurrence]:
         if not occurrences:
             return []
 

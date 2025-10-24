@@ -35,8 +35,8 @@ class ReverseGeocodeService(ReverseGeocodeRepository):
                 reverse_geocode_response = response.json()
 
                 if (
-                        reverse_geocode_response["status"] == "ZERO_RESULTS"
-                        and not reverse_geocode_response["results"]
+                    reverse_geocode_response["status"] == "ZERO_RESULTS"
+                    and not reverse_geocode_response["results"]
                 ):
                     raise HTTPException(
                         status_code=404,
@@ -57,7 +57,9 @@ class ReverseGeocodeService(ReverseGeocodeRepository):
 
                 reverse_geocode_result = GeocodingResultDTO(
                     id=reverse_geocode_response["results"][0].get("place_id", ""),
-                    formatted_address=reverse_geocode_response["results"][0].get("formatted_address", ""),
+                    formatted_address=reverse_geocode_response["results"][0].get(
+                        "formatted_address", ""
+                    ),
                     description=street_name,
                     latitude=resolved_latitude,
                     longitude=resolved_longitude,

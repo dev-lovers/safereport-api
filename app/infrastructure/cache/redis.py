@@ -1,6 +1,7 @@
-import redis
 import json
-from typing import Optional, Any, Dict
+from typing import Any
+
+import redis
 
 # Assumindo que 'app.core.config.settings' é um módulo acessível com as configurações
 from app.core.config import settings
@@ -31,7 +32,7 @@ class RedisClient:
             )
             self.r = None
 
-    def set_data(self, key: str, value: Any, expire: Optional[int] = None) -> bool:
+    def set_data(self, key: str, value: Any, expire: int | None = None) -> bool:
         """
         Salva dados (string, número, etc.) no Redis.
 
@@ -50,7 +51,7 @@ class RedisClient:
             print(f"Erro ao salvar dados no Redis para a chave '{key}': {e}")
             return False
 
-    def get_data(self, key: str) -> Optional[str]:
+    def get_data(self, key: str) -> str | None:
         """
         Obtém dados guardados no Redis.
 
@@ -68,7 +69,7 @@ class RedisClient:
 
     # --- Lógica de Cache (JSON) para Estruturas Mais Complexas ---
 
-    def get_json_cache(self, key: str) -> Optional[Dict[str, Any]]:
+    def get_json_cache(self, key: str) -> dict[str, Any] | None:
         """
         Obtém e desserializa dados JSON do Redis.
 
@@ -89,7 +90,7 @@ class RedisClient:
             return None
 
     def set_json_cache(
-        self, key: str, data: Dict[str, Any], expire: int = 3600
+        self, key: str, data: dict[str, Any], expire: int = 3600
     ) -> bool:
         """
         Serializa e salva um dicionário (dict) como JSON no Redis.

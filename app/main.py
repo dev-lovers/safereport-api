@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api.routers import occurrences, geocoding, autocomplete, reviews
+from app.api.routers import autocomplete, geocoding, occurrences, reviews
 from app.core.config import settings
 
 app = FastAPI(title=settings.PROJECT_NAME)

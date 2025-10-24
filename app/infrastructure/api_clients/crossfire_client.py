@@ -1,5 +1,4 @@
 import asyncio
-from typing import Optional
 
 import httpx
 from fastapi import HTTPException
@@ -26,7 +25,7 @@ class CrossfireAPIService(OccurrenceRepository):
             "Content-Type": "application/json",
         }
 
-    def _get_state_id(self, state: str) -> Optional[str]:
+    def _get_state_id(self, state: str) -> str | None:
         """
         Busca o ID do estado a partir do nome. Método auxiliar interno.
 
@@ -53,7 +52,7 @@ class CrossfireAPIService(OccurrenceRepository):
 
             return None
 
-    def _get_city_id(self, city: str) -> Optional[str]:
+    def _get_city_id(self, city: str) -> str | None:
         """
         Busca o ID da cidade a partir do nome. Método auxiliar interno.
 

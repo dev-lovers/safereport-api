@@ -1,4 +1,3 @@
-from typing import Optional
 
 import httpx
 
@@ -8,13 +7,13 @@ AUTH_API_URL = "https://api-service.fogocruzado.org.br/api/v2/auth/login"
 class CrossfireAuthService:
 
     @staticmethod
-    def get_auth_token(email: str, password: str) -> Optional[str]:
+    def get_auth_token(email: str, password: str) -> str | None:
         """
         Obtém o token de autenticação da API.
-        
+
         Args:
-		    email (str): O email do usuário.
-			password (str): A senha do usuário.
+                    email (str): O email do usuário.
+                        password (str): A senha do usuário.
 
         Raises:
             httpx.HTTPStatusError: Se a API externa retornar um erro (4xx, 5xx).

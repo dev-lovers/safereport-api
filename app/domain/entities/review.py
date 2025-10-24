@@ -1,7 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
 from datetime import datetime
-from enum import Enum
 
 # TODO: Adicionar validação do número de estrelas (1 a 5)
 # class QualityLevels(Enum):
@@ -23,5 +21,5 @@ class Ratings:
 class Review:
     ratings: Ratings
     comment: str
-    id: Optional[int] = None
-    created_at: Optional[datetime] = None
+    id: int | None = None
+    created_at: datetime | None = None

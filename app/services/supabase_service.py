@@ -1,8 +1,9 @@
-from supabase import create_client, Client
-from app.core.config import settings
-from typing import Optional
 
-_supabase_client: Optional[Client] = None
+from supabase import Client, create_client
+
+from app.core.config import settings
+
+_supabase_client: Client | None = None
 
 
 class SupabaseClientError(Exception):

@@ -1,14 +1,14 @@
-from fastapi import APIRouter, HTTPException, Depends
-from app.domain.entities.review import Review
+from fastapi import APIRouter, Depends, HTTPException
+from supabase import Client
 
+from app.domain.entities.review import Review
 from app.infrastructure.persistence.supabase_review_repository import (
-    SupabaseReviewRepository,
     RepositoryError,
+    SupabaseReviewRepository,
 )
 from app.services.supabase_service import (
     get_supabase_client,
 )
-from supabase import Client
 
 router = APIRouter(prefix="/reviews", tags=["Reviews"])
 
