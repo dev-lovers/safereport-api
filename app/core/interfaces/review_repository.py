@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from app.domain.entities.review import Review
+from app.core.entities.review import Review
 
 
 class ReviewRepository(ABC):

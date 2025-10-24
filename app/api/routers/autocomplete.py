@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.infrastructure.api_clients.autocomplete_service import AutocompleteService
+from app.infrastructure.api_clients.autocomplete_client import AutocompleteService
 
 router = APIRouter(tags=["Places"])
 

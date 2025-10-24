@@ -1,6 +1,5 @@
-
-from app.domain.entities.occurrence import Occurrence
-from app.domain.repositories.occurrence_repository import OccurrenceRepository
+from app.core.entities.occurrence import Occurrence
+from app.core.interfaces.occurrence_repository import OccurrenceRepository
 
 
 class GetOccurrencesUseCase:

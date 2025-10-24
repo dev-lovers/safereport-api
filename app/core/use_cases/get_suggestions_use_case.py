@@ -1,5 +1,5 @@
-from app.domain.entities.address import Address
-from app.domain.repositories.autocomplete_repository import AutocompleteRepository
+from app.core.entities.address import Address
+from app.core.interfaces.autocomplete_repository import AutocompleteRepository
 
 
 class GetSuggestionsUseCase:

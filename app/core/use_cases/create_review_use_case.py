@@ -1,5 +1,5 @@
-from app.domain.entities.review import Review
-from app.domain.repositories.review_repository import ReviewRepository
+from app.core.entities.review import Review
+from app.core.interfaces.review_repository import ReviewRepository
 
 
 class CreateReviewUseCase:

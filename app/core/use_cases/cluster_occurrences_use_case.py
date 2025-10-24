@@ -1,18 +1,17 @@
-
 import numpy as np
 import pandas as pd
 from sklearn.cluster import DBSCAN
 
-from app.domain.entities.occurrence import Occurrence
+from app.core.entities.occurrence import Occurrence
 
 
-class OccurrencesProcessor:
+class ClusterOccurrencesUseCase:
 
     def __init__(self, epsilon_km: float = 1.5, min_samples: int = 3):
         self.epsilon_km = epsilon_km
         self.min_samples = min_samples
 
-    def cluster_occurrences(self, occurrences: list[Occurrence]) -> list[Occurrence]:
+    def execute(self, occurrences: list[Occurrence]) -> list[Occurrence]:
         if not occurrences:
             return []
 

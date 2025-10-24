@@ -1,4 +1,3 @@
-
 import httpx
 
 AUTH_API_URL = "https://api-service.fogocruzado.org.br/api/v2/auth/login"

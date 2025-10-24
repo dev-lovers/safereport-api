@@ -1,9 +1,18 @@
 import httpx
 from fastapi import HTTPException
 
-from app.application.dtos.geocoding_dto import GeocodingResultDTO
-from app.core.config import settings
-from app.domain.repositories.geocode_repository import GeocodeRepository
+# from app.application.dtos.geocoding_dto import GeocodingResultDTO
+from app.config import settings
+from app.core.interfaces.geocode_repository import GeocodeRepository
+
+
+class GeocodingResultDTO:
+    id: str
+    formatted_address: str
+    description: str
+    latitude: float
+    longitude: float
+
 
 GEOCODING_API_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 

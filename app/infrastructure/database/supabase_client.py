@@ -1,7 +1,5 @@
-
+from app.config import settings
 from supabase import Client, create_client
-
-from app.core.config import settings
 
 _supabase_client: Client | None = None
 

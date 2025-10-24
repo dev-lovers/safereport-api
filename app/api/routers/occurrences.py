@@ -5,10 +5,10 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.schemas.coordinates import CoordinateScheme
-from app.core.config import settings
+from app.config import settings
 from app.infrastructure.api_clients.crossfire_client import CrossfireAPIService
-from app.infrastructure.cache.redis import RedisClient, get_redis_client
-from app.infrastructure.services.crossfire_auth_service import CrossfireAuthService
+from app.infrastructure.auth.crossfire_auth_service import CrossfireAuthService
+from app.infrastructure.cache.redis_cache_service import RedisClient, get_redis_client
 
 router = APIRouter(prefix="/occurrences", tags=["Occurrences"])
 

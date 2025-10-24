@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from supabase import Client
 
-from app.domain.entities.review import Review
-from app.infrastructure.persistence.supabase_review_repository import (
+from app.core.entities.review import Review
+from app.infrastructure.database.repositories.supabase_review_repository import (
     RepositoryError,
     SupabaseReviewRepository,
 )
-from app.services.supabase_service import (
+from app.infrastructure.database.supabase_client import (
     get_supabase_client,
 )
 

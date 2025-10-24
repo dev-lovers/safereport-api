@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from app.domain.entities.address import Address
+from app.core.entities.address import Address
 
 
 class AutocompleteRepository(ABC):

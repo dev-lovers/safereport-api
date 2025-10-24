@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from app.domain.entities.occurrence import Occurrence
+from app.core.entities.occurrence import Occurrence
 
 
 class OccurrenceRepository(ABC):

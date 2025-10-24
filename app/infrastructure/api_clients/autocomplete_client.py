@@ -1,7 +1,7 @@
 import httpx
 
-from app.core.config import settings
-from app.domain.repositories.autocomplete_repository import AutocompleteRepository
+from app.config import settings
+from app.core.interfaces.autocomplete_repository import AutocompleteRepository
 
 AUTOCOMPLETE_API_URL = "https://places.googleapis.com/v1/places:searchText"
 

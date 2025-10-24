@@ -6,10 +6,10 @@ from datetime import date, timedelta
 import redis
 from celery import Celery
 
-from app.core.config import settings
+from app.config import settings
+from app.core.use_cases.cluster_occurrences_use_case import ClusterOccurrencesUseCase
 from app.infrastructure.api_clients.crossfire_client import CrossfireAPIService
-from app.infrastructure.services.crossfire_auth_service import CrossfireAuthService
-from app.services.occurrences_service import OccurrencesProcessor
+from app.infrastructure.auth.crossfire_auth_service import CrossfireAuthService
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +72,9 @@ def process_and_cache_occurrences(
         logger.info(f"WORKER: {len(raw_data)} ocorrências encontradas.")
 
         logger.info("WORKER: Iniciando processamento (clusterização)...")
-        processor = OccurrencesProcessor(epsilon_km=0.7, min_samples=8)
+        processor = ClusterOccurrencesUseCase(epsilon_km=0.7, min_samples=8)
 
-        analyzed_data_dict = processor.cluster_occurrences(raw_data)
+        analyzed_data_dict = processor.execute(raw_data)
         logger.info("WORKER: Processamento finalizado.")
 
         json_output = json.dumps(analyzed_data_dict)
