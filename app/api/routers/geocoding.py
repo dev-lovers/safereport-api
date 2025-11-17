@@ -1,41 +1,44 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
-from app.infrastructure.api_clients.geocode_client import GeocodeService
-from app.infrastructure.api_clients.reverse_geocode_client import ReverseGeocodeService
+from app.domain.geocoding.use_cases.get_address_use_case import (
+    GetAddressUseCase,
+)
+from app.domain.geocoding.use_cases.get_coordinates_use_case import (
+    GetCoordinatesUseCase,
+)
+from app.infrastructure.api_clients.google_geocode_client import GeocodeService
+from app.infrastructure.api_clients.google_reverse_geocode_client import (
+    ReverseGeocodeService,
+)
+from app.schemas.response import StandardResponse
 
 router = APIRouter(prefix="/geocoding", tags=["Geocoding"])
 
 
-def get_geocode_service() -> GeocodeService:
-    return GeocodeService()
+def get_coordinates_use_case() -> GetCoordinatesUseCase:
+    return GetCoordinatesUseCase(GeocodeService())
 
 
-def get_reverse_geocode_service() -> ReverseGeocodeService:
-    return ReverseGeocodeService()
+def get_reverse_geocode_use_case() -> GetAddressUseCase:
+    return GetAddressUseCase(ReverseGeocodeService())
 
 
-@router.get("/")
+@router.get("", response_model=StandardResponse)
 async def geocode_place(
     address: str = Query(..., description="Endereço completo para geocodificação"),
-    geocode_service: GeocodeService = Depends(get_geocode_service),
+    use_case: GetCoordinatesUseCase = Depends(get_coordinates_use_case),
 ):
-    try:
-        return geocode_service.get_coordinates(address=address)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    result = await use_case.execute(address)
+    return StandardResponse(message="Geocodificação realizada com sucesso", data=result)
 
 
-@router.get("/reverse")
+@router.get("/reverse", response_model=StandardResponse)
 async def reverse_geocode_place(
-    latitude: float = Query(..., description="Latitude do local"),
-    longitude: float = Query(..., description="Longitude do local"),
-    reverse_geocode_service: ReverseGeocodeService = Depends(
-        get_reverse_geocode_service
-    ),
+    latitude: float = Query(...),
+    longitude: float = Query(...),
+    use_case: GetAddressUseCase = Depends(get_reverse_geocode_use_case),
 ):
-    try:
-        return reverse_geocode_service.get_address(
-            latitude=latitude, longitude=longitude
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    result = await use_case.execute(latitude, longitude)
+    return StandardResponse(
+        message="Geocodificação reversa realizada com sucesso", data=result
+    )

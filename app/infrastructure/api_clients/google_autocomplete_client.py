@@ -1,13 +1,14 @@
 import httpx
 
-from app.config import settings
-from app.core.interfaces.autocomplete_repository import AutocompleteRepository
+from app.core.config import settings
+from app.domain.places.entities.suggestion import SuggestionEntity
+from app.domain.places.interfaces.autocomplete_repository import AutocompleteRepository
 
 AUTOCOMPLETE_API_URL = "https://places.googleapis.com/v1/places:searchText"
 
 
 class AutocompleteService(AutocompleteRepository):
-    def get_suggestions(self, query):
+    def get_suggestions(self, query: str) -> list[SuggestionEntity]:
         """
         Obtém sugestões de autocomplete da API.
 
@@ -28,7 +29,17 @@ class AutocompleteService(AutocompleteRepository):
             with httpx.Client() as client:
                 response = client.post(
                     AUTOCOMPLETE_API_URL,
-                    json={"textQuery": query},
+                    json={
+                        "textQuery": query,
+                        "regionCode": "BR",
+                        "languageCode": "pt-BR",
+                        "locationBias": {
+                            "circle": {
+                                "center": {"latitude": -12.9777, "longitude": -38.5016},
+                                "radius": 50000,
+                            }
+                        },
+                    },
                     headers=headers,
                     timeout=10.0,
                 )
@@ -39,13 +50,13 @@ class AutocompleteService(AutocompleteRepository):
                 suggestions = response_data.get("places", [])
 
                 new_suggestions = [
-                    {
-                        "id": place.get("id", ""),
-                        "address": place.get("formattedAddress", ""),
-                        "description": place.get("displayName", {}).get("text", ""),
-                        "latitude": place.get("location", {}).get("latitude", 0.0),
-                        "longitude": place.get("location", {}).get("longitude", 0.0),
-                    }
+                    SuggestionEntity(
+                        id=place.get("id", ""),
+                        address=place.get("formattedAddress", ""),
+                        description=place.get("displayName", {}).get("text", ""),
+                        latitude=place.get("location", {}).get("latitude", 0.0),
+                        longitude=place.get("location", {}).get("longitude", 0.0),
+                    )
                     for place in suggestions
                 ]
 

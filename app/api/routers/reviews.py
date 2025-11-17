@@ -1,38 +1,31 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from supabase import Client
 
-from app.core.entities.review import Review
+from app.domain.reviews.entities.review import Review
+from app.domain.reviews.use_cases.create_review_use_case import CreateReviewUseCase
 from app.infrastructure.database.repositories.supabase_review_repository import (
-    RepositoryError,
     SupabaseReviewRepository,
 )
-from app.infrastructure.database.supabase_client import (
-    get_supabase_client,
-)
+from app.infrastructure.database.supabase_client import get_supabase_client
+from app.schemas.response import StandardResponse
 
 router = APIRouter(prefix="/reviews", tags=["Reviews"])
 
 
-def get_review_repository(
+def get_create_review_use_case(
     client: Client = Depends(get_supabase_client),
-) -> SupabaseReviewRepository:
-    """
-    Dependência que fornece uma instância do SupabaseReviewRepository.
-    O 'client' é injetado usando a dependência 'get_supabase_client'.
-    """
-    return SupabaseReviewRepository(client=client)
+) -> CreateReviewUseCase:
+    repo = SupabaseReviewRepository(client)
+    return CreateReviewUseCase(repo)
 
 
-@router.post("/")
-async def create_review(
+@router.post("", response_model=StandardResponse)
+def create_review(
     review: Review,
-    repository: SupabaseReviewRepository = Depends(get_review_repository),
+    use_case: CreateReviewUseCase = Depends(get_create_review_use_case),
 ):
-    try:
-        created_review = repository.create(review)
-        return {"message": "Review created successfully", "review": created_review}
-
-    except RepositoryError as e:
-        raise HTTPException(status_code=500, detail=f"Erro de persistência: {e}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ocorreu um erro inesperado: {e}")
+    result = use_case.execute(review)
+    return StandardResponse(
+        message="Avaliação criada com sucesso",
+        data=result,
+    )

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class Address:
+class SuggestionEntity:
     id: str
     address: str
     description: str

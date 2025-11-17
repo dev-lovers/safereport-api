@@ -3,8 +3,8 @@ import asyncio
 import httpx
 from fastapi import HTTPException
 
-from app.core.entities.occurrence import Occurrence
-from app.core.interfaces.occurrence_repository import OccurrenceRepository
+from app.domain.occurrences.entities.occurrence import Occurrence
+from app.domain.occurrences.interfaces.occurrence_repository import OccurrenceRepository
 
 CROSSFIRE_API_BASE_URL = "https://api-service.fogocruzado.org.br/api/v2"
 

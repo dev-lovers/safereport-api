@@ -1,7 +1,7 @@
 from typing import Any
 
-from app.core.entities.review import Ratings, Review
-from app.core.interfaces.review_repository import ReviewRepository
+from app.domain.reviews.entities.review import Ratings, Review
+from app.domain.reviews.interfaces.review_repository import ReviewRepository
 from supabase import Client
 
 

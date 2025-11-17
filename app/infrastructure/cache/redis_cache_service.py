@@ -4,7 +4,7 @@ from typing import Any
 import redis
 
 # Assumindo que 'app.core.config.settings' é um módulo acessível com as configurações
-from app.config import settings
+from app.core.config import settings
 
 
 class RedisClient:

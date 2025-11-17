@@ -1,20 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
-from app.infrastructure.api_clients.autocomplete_client import AutocompleteService
+from app.domain.places.use_cases.get_suggestions_use_case import GetSuggestionsUseCase
+from app.schemas.response import StandardResponse
+from app.schemas.suggestion import SuggestionScheme
 
 router = APIRouter(tags=["Places"])
 
 
-def get_autocomplete_service() -> AutocompleteService:
-    return AutocompleteService()
+def get_use_case() -> GetSuggestionsUseCase:
+    return GetSuggestionsUseCase()
 
 
-@router.get("/suggestions")
+@router.get("/suggestions", response_model=StandardResponse[list[SuggestionScheme]])
 async def autocomplete_place(
-    query: str = Query(..., description="Termo de busca para sugestões de lugares"),
-    autocomplete_service: AutocompleteService = Depends(get_autocomplete_service),
+    query: str = Query(..., description="Termo de busca para sugestões"),
+    use_case: GetSuggestionsUseCase = Depends(get_use_case),
 ):
-    try:
-        return autocomplete_service.get_suggestions(query=query)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    suggestions = await use_case.execute(query)
+    return StandardResponse(message="Sugestões obtidas com sucesso", data=suggestions)

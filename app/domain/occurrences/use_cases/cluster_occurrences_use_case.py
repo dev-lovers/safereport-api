@@ -1,8 +1,7 @@
 import numpy as np
 import pandas as pd
+from app.domain.occurrences.entities.occurrence import Occurrence
 from sklearn.cluster import DBSCAN
-
-from app.core.entities.occurrence import Occurrence
 
 
 class ClusterOccurrencesUseCase:

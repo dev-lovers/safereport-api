@@ -1,19 +1,19 @@
-import json
-from datetime import date, timedelta
-
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.schemas.coordinates import CoordinateScheme
-from app.config import settings
+from app.domain.occurrences.use_cases.get_hotspots_use_case import (
+    GetHotspotsUseCase,
+)
+from app.domain.occurrences.use_cases.get_occurrences_use_case import (
+    GetOccurrencesUseCase,
+)
 from app.infrastructure.api_clients.crossfire_client import CrossfireAPIService
 from app.infrastructure.auth.crossfire_auth_service import CrossfireAuthService
 from app.infrastructure.cache.redis_cache_service import RedisClient, get_redis_client
+from app.schemas.coordinates import CoordinateScheme
+from app.schemas.response import StandardResponse
 
 router = APIRouter(prefix="/occurrences", tags=["Occurrences"])
-
-
-CACHE_KEY = "analysis_result_salvador"
 
 
 def get_crossfire_auth_service() -> CrossfireAuthService:
@@ -24,87 +24,43 @@ def get_occurrence_gateway() -> CrossfireAPIService:
     return CrossfireAPIService()
 
 
-async def get_city_and_state(latitude: float, longitude: float) -> tuple[str, str]:
-    """
-    Obtém cidade e estado a partir da latitude e longitude usando a API do Google.
-    """
-    url = (
-        f"https://maps.googleapis.com/maps/api/geocode/json"
-        f"?latlng={latitude},{longitude}&key={settings.GOOGLE_MAPS_API_KEY}"
-    )
-    async with httpx.AsyncClient() as client:
-        response = await client.get(url)
-        response.raise_for_status()
-        data = response.json()
-
-    cidade = estado = None
-    if data["status"] == "OK":
-        for component in data["results"][0]["address_components"]:
-            if "administrative_area_level_2" in component["types"]:
-                cidade = component["long_name"]
-            if "administrative_area_level_1" in component["types"]:
-                estado = component["long_name"]
-
-    if not cidade or not estado:
-        raise HTTPException(
-            status_code=404,
-            detail="Cidade ou estado não encontrados para as coordenadas fornecidas.",
-        )
-
-    return cidade, estado
-
-
-@router.get("/")
-async def get_occurrences(
-    coordinates: CoordinateScheme = Depends(),
-    crossfire_auth_service: CrossfireAuthService = Depends(get_crossfire_auth_service),
+def get_occurrences_use_case(
+    auth_service: CrossfireAuthService = Depends(get_crossfire_auth_service),
     occurrence_gateway: CrossfireAPIService = Depends(get_occurrence_gateway),
     redis_client: RedisClient = Depends(get_redis_client),
+) -> GetOccurrencesUseCase:
+    return GetOccurrencesUseCase(
+        auth_service=auth_service,
+        occurrence_gateway=occurrence_gateway,
+        redis_client=redis_client,
+    )
+
+
+def get_hotspots_use_case(
+    redis_client: RedisClient = Depends(get_redis_client),
+) -> GetHotspotsUseCase:
+    return GetHotspotsUseCase(redis_client=redis_client)
+
+
+@router.get("", response_model=StandardResponse[list[dict]])
+async def get_occurrences(
+    coordinates: CoordinateScheme = Depends(),
+    use_case: GetOccurrencesUseCase = Depends(get_occurrences_use_case),
 ):
     """
     Retorna as ocorrências brutas para a cidade/estado obtidos pela latitude e longitude.
     """
     try:
-        days_to_search = 31
+        occurrences = await use_case.execute(coordinates)
 
-        city, state = await get_city_and_state(
-            coordinates.latitude, coordinates.longitude
+        return StandardResponse[list[dict]](
+            message="Lista bruta de ocorrências",
+            data=occurrences,
         )
 
-        today = date.today()
-        today_str = today.strftime("%Y-%m-%d")
-
-        analysis_id = (
-            f"ocorrences_raw_{city.lower()}_{state.lower()}"
-            f"_{today_str}_last{days_to_search}days"
-        )
-
-        cached_data = redis_client.get_json_cache(analysis_id)
-
-        if cached_data:
-            return {"message": "Raw occurrences list (cached)", "data": cached_data}
-
-        access_token = crossfire_auth_service.get_auth_token(
-            settings.EMAIL_CROSSFIRE_API, settings.PASSWORD_CROSSFIRE_API
-        )
-        if not access_token:
-            raise ValueError("Não foi possível obter o token de autenticação.")
-        occurrence_gateway.set_access_token(access_token)
-
-        final_date = today_str
-        initial_date = (today - timedelta(days=days_to_search)).strftime("%Y-%m-%d")
-
-        occurrences = await occurrence_gateway.get_occurrences(
-            city_name=city,
-            state_name=state,
-            initial_date=initial_date,
-            final_date=final_date,
-        )
-
-        redis_client.set_json_cache(analysis_id, occurrences, expire=3600)
-
-        return {"message": "Raw occurrences list", "data": occurrences}
-
+    except HTTPException:
+        # Re-levanta HTTPException para o FastAPI tratar diretamente
+        raise
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
     except (httpx.HTTPStatusError, httpx.RequestError) as exc:
@@ -119,13 +75,14 @@ async def get_occurrences(
         raise HTTPException(status_code=status_code, detail=detail)
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Ocorreu um erro inesperado: {str(e)}"
+            status_code=500,
+            detail=f"Ocorreu um erro inesperado: {str(e)}",
         )
 
 
-@router.get("/hotspots")
-def get_hotspots(
-    redis_client: RedisClient = Depends(get_redis_client),
+@router.get("/hotspots", response_model=StandardResponse[list[dict]])
+async def get_hotspots(
+    use_case: GetHotspotsUseCase = Depends(get_hotspots_use_case),
 ):
     """
     Obtém a análise de hotspots de ocorrências mais recente.
@@ -134,32 +91,12 @@ def get_hotspots(
     e armazenados em cache para entrega imediata.
     """
     try:
-        if not redis_client:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Serviço de cache indisponível.",
-            )
+        analysis_data_dict = use_case.execute()
 
-        cached_data_str = redis_client.get_data(CACHE_KEY)
-
-        if cached_data_str is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Nenhum resultado de análise encontrado. O processamento inicial pode estar em andamento.",
-            )
-
-        try:
-            analysis_data_dict = json.loads(cached_data_str)
-        except json.JSONDecodeError:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Erro ao processar dados do cache. Formato inválido.",
-            )
-
-        return {
-            "message": "Análise de hotspots obtida com sucesso",
-            "data": analysis_data_dict,
-        }
+        return StandardResponse[list[dict]](
+            message="Análise de hotspots obtida com sucesso",
+            data=analysis_data_dict,
+        )
 
     except HTTPException:
         raise

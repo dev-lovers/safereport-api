@@ -5,8 +5,8 @@ services:
     build: .
     container_name: safereport_api
     command: gunicorn --bind 0.0.0.0:80 --workers 4 --worker-class uvicorn.workers.UvicornWorker app.main:app
-    expose:
-      - "80"
+    ports:
+      - "8080:80"
     volumes:
       - .:/app
     depends_on:
