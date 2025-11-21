@@ -1,0 +1,59 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: safereport_api_dev
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    depends_on:
+      - redis 
+    networks:
+      - safereport_dev_network
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: safereport_worker_dev
+    command: celery -A app.tasks:app worker --loglevel=INFO
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+    networks:
+      - safereport_dev_network
+
+  beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: safereport_beat_dev
+    command: celery -A app.tasks:app beat --loglevel=INFO
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+    networks:
+      - safereport_dev_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: safereport_redis_dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - safereport_redis_dev_volume:/data
+    networks:
+      - safereport_dev_network
+
+volumes:
+  safereport_redis_dev_volume:
+
+networks:
+  safereport_dev_network:
